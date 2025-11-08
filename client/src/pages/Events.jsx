@@ -32,37 +32,46 @@ const Events = () => {
   const [paidOnly, setPaidOnly] = useState(false);
 
   useEffect(() => {
-    // initial fetch; pass params if you want server filtering in future
     fetchEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (events || [])
-      .filter((ev) => {
-        const okCat = category === "All" || ev.category === category;
-        const price = Number(ev.price || 0);
-        const okPaid = !paidOnly || price > 0;
-        const haystack = [
-          ev.title,
-          ev.subtitle,
-          ev.venueName,
-          ev.city,
-          ev.category,
-          (ev.tags || []).join(" "),
-          ev.description,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        const okText = !q || haystack.includes(q);
-        return okCat && okPaid && okText;
-      })
-      .sort(
-        (a, b) =>
-          new Date(a.start || a.date || 0) - new Date(b.start || b.date || 0)
-      );
+
+    return (
+      (events || [])
+        // ✅ Only published events
+        .filter((ev) => {
+          const status = String(ev.status || "").toLowerCase();
+          // If backend doesn’t send a status, we assume published; otherwise require "published"
+          return status === "" || status === "published";
+        })
+        // existing client filters
+        .filter((ev) => {
+          const okCat = category === "All" || ev.category === category;
+          const price = Number(ev.price || 0);
+          const okPaid = !paidOnly || price > 0;
+          const haystack = [
+            ev.title,
+            ev.subtitle,
+            ev.venueName,
+            ev.city,
+            ev.category,
+            (ev.tags || []).join(" "),
+            ev.description,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          const okText = !q || haystack.includes(q);
+          return okCat && okPaid && okText;
+        })
+        .sort(
+          (a, b) =>
+            new Date(a.start || a.date || 0) - new Date(b.start || b.date || 0)
+        )
+    );
   }, [events, query, category, paidOnly]);
 
   const goDetails = (id) => () => navigate(`/events/${id}`);

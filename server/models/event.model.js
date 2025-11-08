@@ -27,9 +27,23 @@ const TimelineItemSchema = new mongoose.Schema(
 );
 
 const SocialSchema = new mongoose.Schema(
+  { label: { type: String, trim: true }, url: { type: String, trim: true } },
+  { _id: false }
+);
+
+// NEW: Embedded ticket template
+const TicketTemplateSchema = new mongoose.Schema(
   {
-    label: { type: String, trim: true },
-    url: { type: String, trim: true },
+    key: { type: String, default: "classic" },
+    name: { type: String, default: "Classic" },
+    palette: {
+      bg: { type: String, default: "#0b1020" },
+      card: { type: String, default: "#11172c" },
+      accent: { type: String, default: "#19cfbc" },
+      text: { type: String, default: "#ffffff" },
+    },
+    layout: { type: String, default: "left-logo-right-qr" },
+    cornerStyle: { type: String, default: "rounded-xl" },
   },
   { _id: false }
 );
@@ -118,17 +132,19 @@ const EventSchema = new mongoose.Schema(
 
     // owner
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+
+    // NEW: ticket template selection
+    ticketTemplate: { type: TicketTemplateSchema, default: () => ({}) },
   },
   { timestamps: true }
 );
 
-// Search index (title, description, tags)
+// text index
 EventSchema.index({ title: "text", description: "text", tags: "text" });
 
-// Generate a unique slug from title (on create & when title changes)
+// slug
 EventSchema.pre("save", async function (next) {
   if (!this.isModified("title") && this.slug) return next();
-
   const base = slugify(this.title, { lower: true, strict: true });
   let slug = base;
   let i = 1;

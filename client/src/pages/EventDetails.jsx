@@ -17,10 +17,66 @@ import {
   Upload,
   X,
   Check,
+  QrCode,
+  Ticket as TicketIcon,
 } from "lucide-react";
 import { useEvents } from "../contexts/EventContext";
 import { useAuth } from "../contexts/AuthContext";
 import Loader from "../components/Loader";
+
+/* ---------- Ticket Templates (same palette/shape keys as Create flow) ---------- */
+const TEMPLATES = [
+  {
+    key: "classic",
+    name: "Classic",
+    palette: {
+      bg: "#0b1020",
+      card: "#11172c",
+      accent: "#19cfbc",
+      text: "#ffffff",
+    },
+    layout: "left-logo-right-qr",
+    cornerStyle: "rounded-xl",
+  },
+  {
+    key: "gradient",
+    name: "Gradient",
+    palette: {
+      bg: "#0b0f1a",
+      card: "linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d)",
+      accent: "#ffffff",
+      text: "#ffffff",
+    },
+    layout: "split-qr",
+    cornerStyle: "rounded-2xl",
+  },
+  {
+    key: "minimal",
+    name: "Minimal",
+    palette: {
+      bg: "#0c0c0f",
+      card: "#121212",
+      accent: "#7dd3fc",
+      text: "#e5e7eb",
+    },
+    layout: "stacked",
+    cornerStyle: "rounded-lg",
+  },
+  {
+    key: "neon",
+    name: "Neon",
+    palette: {
+      bg: "#05070d",
+      card: "#0b1020",
+      accent: "#10b981",
+      text: "#e2e8f0",
+    },
+    layout: "badge",
+    cornerStyle: "rounded-3xl",
+  },
+];
+
+const DEFAULT_TEMPLATE = TEMPLATES[0];
 
 const EMPTY_FORM = {
   title: "",
@@ -65,6 +121,8 @@ const EMPTY_FORM = {
   website: "",
   socials: [],
   status: "draft",
+  // NEW: ticket template in form state
+  ticketTemplate: DEFAULT_TEMPLATE,
 };
 
 function EventDetails() {
@@ -80,7 +138,7 @@ function EventDetails() {
   } = useEvents();
   const { user } = useAuth();
 
-  // Fetch event (hook must be before early returns)
+  // Fetch event
   useEffect(() => {
     fetchEventById(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,7 +146,7 @@ function EventDetails() {
 
   const ev = singleEvent;
 
-  // ----- All local hooks live ABOVE any early return -----
+  // ----- Local state / hooks -----
   const [editOpen, setEditOpen] = useState(false);
 
   const [bannerFile, setBannerFile] = useState(null);
@@ -99,7 +157,6 @@ function EventDetails() {
   const [logoPreview, setLogoPreview] = useState("");
   const logoInputRef = useRef(null);
 
-  // Initialize empty; sync from event when it arrives
   const [form, setForm] = useState(EMPTY_FORM);
 
   const [tagInput, setTagInput] = useState("");
@@ -262,7 +319,7 @@ function EventDetails() {
     Object.entries(form).forEach(([k, v]) => {
       if (Array.isArray(v)) fd.append(k, JSON.stringify(v));
       else if (typeof v === "object" && v !== null)
-        fd.append(k, JSON.stringify(v));
+        fd.append(k, JSON.stringify(v)); // includes ticketTemplate
       else fd.append(k, v ?? "");
     });
     if (bannerFile) fd.append("banner", bannerFile);
@@ -279,6 +336,8 @@ function EventDetails() {
     await deleteEvent(ev._id || ev.id);
     navigate(-1);
   };
+
+  const activeTemplate = ev.ticketTemplate || DEFAULT_TEMPLATE;
 
   return (
     <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
@@ -457,7 +516,7 @@ function EventDetails() {
           </div>
         </div>
 
-        {/* Organizer / Links / Venue */}
+        {/* Organizer / Links / Venue + Ticket Preview column */}
         <div className="mt-6 grid lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
             <h3 className="text-sm font-semibold text-white/90">Organizer</h3>
@@ -552,6 +611,7 @@ function EventDetails() {
             )}
           </div>
 
+          {/* Right column: Ticketing + Ticket Preview + Links + Venue */}
           <div className="space-y-4">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <h3 className="text-sm font-semibold text-white/90">Ticketing</h3>
@@ -591,7 +651,42 @@ function EventDetails() {
               </div>
             </div>
 
-            {(ev.website || (ev.socials || []).length) && (
+            {/* Ticket Preview */}
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white/90 inline-flex items-center gap-2">
+                  <TicketIcon className="h-4 w-4" /> Ticket Preview
+                </h3>
+                <span className="text-[11px] text-white/60">
+                  {activeTemplate?.name || "Classic"}
+                </span>
+              </div>
+              <div className="mt-3">
+                <TicketPreview
+                  tpl={activeTemplate}
+                  event={{
+                    title: ev.title,
+                    organization: ev.organization,
+                    start: ev.start,
+                    city: ev.city,
+                    category: ev.category,
+                    price,
+                  }}
+                  logo={logo}
+                />
+              </div>
+              {isOwner && (
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 h-10 text-sm hover:bg-white/10 transition"
+                  onClick={() => setEditOpen(true)}
+                >
+                  Change style
+                </button>
+              )}
+            </div>
+
+            {(ev.website || ev.socials) && (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <h3 className="text-sm font-semibold text-white/90">Links</h3>
                 <div className="mt-2 space-y-2">
@@ -664,11 +759,105 @@ function EventDetails() {
           setSocialUrl={setSocialUrl}
           addSocial={addSocial}
           removeSocial={removeSocial}
+          // NEW: pass templates for selection
+          templates={TEMPLATES}
         />
       )}
 
-      {/* saving overlay */}
       {(submitting || actionLoading) && <Loader />}
+    </div>
+  );
+}
+
+/* ---------- Ticket Preview ---------- */
+function TicketPreview({ tpl, event, logo }) {
+  const { title, organization, start, city, category, price } = event;
+  const code = "SP-ABCD-1234";
+  const cardStyle = tpl?.palette?.card?.startsWith?.("linear")
+    ? { background: tpl.palette.card }
+    : { backgroundColor: tpl?.palette?.card || "#11172c" };
+
+  return (
+    <div
+      className={`relative ${
+        tpl?.cornerStyle || "rounded-xl"
+      } border border-white/10 p-3`}
+      style={{ backgroundColor: tpl?.palette?.bg || "#0b1020" }}
+    >
+      <div
+        className={`relative ${tpl?.cornerStyle || "rounded-xl"} p-3`}
+        style={cardStyle}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg overflow-hidden bg-black/30 border border-white/20 grid place-items-center">
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt="logo"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-[10px] text-white/70">LOGO</span>
+                )}
+              </div>
+              <div
+                className="text-xs"
+                style={{ color: tpl?.palette?.text || "#fff" }}
+              >
+                <div className="font-semibold line-clamp-1">
+                  {title || "Event Title"}
+                </div>
+                <div className="opacity-80 line-clamp-1">
+                  {organization || "Organizer"}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="mt-2 text-[11px]"
+              style={{ color: tpl?.palette?.text || "#fff" }}
+            >
+              <div className="opacity-90">
+                {new Date(start || Date.now()).toLocaleString()}
+              </div>
+              <div className="opacity-80">{city || "Venue"}</div>
+              <div className="opacity-80">
+                {Number(price || 0) > 0 ? `₹ ${price}` : "Free"}
+              </div>
+            </div>
+          </div>
+
+          <div className="shrink-0 grid place-items-center">
+            <div className="h-20 w-20 rounded-md border border-white/30 bg-black/30 grid place-items-center">
+              <QrCode className="h-8 w-8 opacity-80" />
+            </div>
+            <div
+              className="mt-1 text-[10px] tracking-wider"
+              style={{ color: tpl?.palette?.text || "#fff" }}
+            >
+              {code}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between text-[11px]">
+          <span style={{ color: tpl?.palette?.text || "#fff" }}>
+            Holder: <b>John Doe</b>
+          </span>
+          <span
+            className="px-2 py-0.5 rounded-full border"
+            style={{
+              color: tpl?.palette?.accent || "#19cfbc",
+              borderColor: `${tpl?.palette?.accent || "#19cfbc"}66`,
+              background: `${tpl?.palette?.accent || "#19cfbc"}14`,
+            }}
+          >
+            {category || "Category"}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -713,6 +902,11 @@ function mapEventToForm(ev) {
     website: ev.website || "",
     socials: Array.isArray(ev.socials) ? ev.socials : [],
     status: ev.status || "draft",
+    // NEW: ticket template
+    ticketTemplate:
+      ev.ticketTemplate && ev.ticketTemplate.key
+        ? ev.ticketTemplate
+        : DEFAULT_TEMPLATE,
   };
 }
 
@@ -882,6 +1076,46 @@ function Chip({ children, onRemove }) {
   );
 }
 
+/* ---------- Ticket Template Picker for Edit overlay ---------- */
+function TemplatePicker({ templates, value, onChange, previewEvent, logo }) {
+  return (
+    <div>
+      <p className="text-xs text-white/60 mb-2">Ticket style</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {templates.map((tpl) => {
+          const selected = value?.key === tpl.key;
+          return (
+            <button
+              key={tpl.key}
+              type="button"
+              onClick={() => onChange(tpl)}
+              className={`group text-left rounded-2xl border ${
+                selected ? "border-emerald-400/40" : "border-white/10"
+              } bg-white/5 hover:bg-white/10 transition p-3`}
+            >
+              <TicketPreview tpl={tpl} event={previewEvent} logo={logo} />
+              <div className="mt-3 flex items-center justify-between">
+                <div className="text-sm font-medium text-white/90">
+                  {tpl.name}
+                </div>
+                <span
+                  className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                    selected
+                      ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+                      : "border-white/10 bg-white/5 text-white/70"
+                  }`}
+                >
+                  {selected ? "Selected" : "Select"}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* The overlay is a pure component (no hooks inside), so it doesn't affect hook order */
 function EditOverlay(props) {
   const {
@@ -912,6 +1146,7 @@ function EditOverlay(props) {
     setSocialUrl,
     addSocial,
     removeSocial,
+    templates,
   } = props;
 
   return (
@@ -1320,7 +1555,12 @@ function EditOverlay(props) {
                       </span>
                       <button
                         type="button"
-                        onClick={() => removeSocial(idx)}
+                        onClick={() => {
+                          setForm((f) => ({
+                            ...f,
+                            socials: f.socials.filter((_, i) => i !== idx),
+                          }));
+                        }}
                         className="text-white/70 hover:text-white"
                       >
                         <X className="h-4 w-4" />
@@ -1329,6 +1569,26 @@ function EditOverlay(props) {
                   ))}
                 </ul>
               )}
+            </Card>
+
+            {/* NEW: Ticket Template chooser in Edit */}
+            <Card title="Ticket Style">
+              <TemplatePicker
+                templates={templates}
+                value={form.ticketTemplate}
+                onChange={(tpl) =>
+                  setForm((f) => ({ ...f, ticketTemplate: tpl }))
+                }
+                previewEvent={{
+                  title: form.title,
+                  organization: form.organization,
+                  start: form.start,
+                  city: form.city,
+                  category: form.category,
+                  price: Number(form.price || 0),
+                }}
+                logo={logoPreview}
+              />
             </Card>
           </section>
 

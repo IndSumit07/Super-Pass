@@ -29,7 +29,14 @@ const normalizeBody = (body) => {
   const b = { ...body };
 
   // arrays/objects possibly sent as JSON strings
-  ["tags", "eligibility", "stages", "timeline", "socials"].forEach((k) => {
+  [
+    "tags",
+    "eligibility",
+    "stages",
+    "timeline",
+    "socials",
+    "ticketTemplate",
+  ].forEach((k) => {
     const parsed = parseMaybeJSON(b[k]);
     if (parsed !== undefined) b[k] = parsed;
   });
@@ -72,7 +79,23 @@ export const createEvent = async (req, res) => {
 
     if (req.user?._id) body.createdBy = req.user._id;
 
-    // Upload images (memoryStorage via multer)
+    // default ticket template if not provided
+    if (!body.ticketTemplate || typeof body.ticketTemplate !== "object") {
+      body.ticketTemplate = {
+        key: "classic",
+        name: "Classic",
+        palette: {
+          bg: "#0b1020",
+          card: "#11172c",
+          accent: "#19cfbc",
+          text: "#ffffff",
+        },
+        layout: "left-logo-right-qr",
+        cornerStyle: "rounded-xl",
+      };
+    }
+
+    // Upload images (multer memoryStorage)
     if (req.files?.banner?.[0]) {
       const file = req.files.banner[0];
       const result = await uploadBuffer(file.buffer, {

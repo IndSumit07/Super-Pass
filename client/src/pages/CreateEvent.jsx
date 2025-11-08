@@ -16,20 +16,76 @@ import {
   Building2,
   ListChecks,
   Plus,
+  ArrowLeft,
+  ArrowRight,
+  QrCode,
+  Ticket as TicketIcon,
 } from "lucide-react";
 import { useToast } from "../components/Toast";
 import { useAuth } from "../contexts/AuthContext";
-import { useEvents } from "../contexts/EventContext"; // 👈 use EventContext
+import { useEvents } from "../contexts/EventContext";
 import Loader from "../components/Loader";
 
-/**
- * SuperPaas — Create Event
- */
+/** Ticket templates (client-side preview + persisted config) */
+const TEMPLATES = [
+  {
+    key: "classic",
+    name: "Classic",
+    palette: {
+      bg: "#0b1020",
+      card: "#11172c",
+      accent: "#19cfbc",
+      text: "#ffffff",
+    },
+    layout: "left-logo-right-qr",
+    cornerStyle: "rounded-xl",
+  },
+  {
+    key: "gradient",
+    name: "Gradient",
+    palette: {
+      bg: "#0b0f1a",
+      card: "linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d)",
+      accent: "#ffffff",
+      text: "#ffffff",
+    },
+    layout: "split-qr",
+    cornerStyle: "rounded-2xl",
+  },
+  {
+    key: "minimal",
+    name: "Minimal",
+    palette: {
+      bg: "#0c0c0f",
+      card: "#121212",
+      accent: "#7dd3fc",
+      text: "#e5e7eb",
+    },
+    layout: "stacked",
+    cornerStyle: "rounded-lg",
+  },
+  {
+    key: "neon",
+    name: "Neon",
+    palette: {
+      bg: "#05070d",
+      card: "#0b1020",
+      accent: "#10b981",
+      text: "#e2e8f0",
+    },
+    layout: "badge",
+    cornerStyle: "rounded-3xl",
+  },
+];
+
 const CreateEvent = () => {
   const navigate = useNavigate();
   const toast = useToast?.();
   const { user } = useAuth?.() || {};
-  const { createEvent, actionLoading } = useEvents(); // ✅ use the correct flag
+  const { createEvent, actionLoading } = useEvents();
+
+  const [step, setStep] = useState(1); // 1: details, 2: ticket
+  const [ticketTemplate, setTicketTemplate] = useState(TEMPLATES[0]);
 
   const [form, setForm] = useState({
     // basics
@@ -39,35 +95,29 @@ const CreateEvent = () => {
     category: "",
     description: "",
     mode: "Offline",
-
     // schedule
     start: "",
     end: "",
     regDeadline: "",
-
     // venue
     venueName: "",
     address: "",
     city: "",
     state: "",
     pincode: "",
-
     // ticketing
     isPaid: false,
     price: "",
     capacity: "",
-
     // team
     isTeamEvent: false,
     teamMin: "",
     teamMax: "",
-
-    // dynamic lists
+    // lists
     tags: [],
     eligibility: [],
-    stages: [], // {title, start, end, mode, description}
-    timeline: [], // {title, date, note}
-
+    stages: [],
+    timeline: [],
     // extras
     prizes: "",
     rewards: "",
@@ -79,24 +129,22 @@ const CreateEvent = () => {
     contactPhone: "",
     faqLink: "",
     website: "",
-    socials: [], // [{label,url}]
+    socials: [],
     status: "draft",
-
     // style
     bannerColor: "#0ea5e9",
   });
 
-  // Banner
+  // uploads
   const [bannerFile, setBannerFile] = useState(null);
   const [bannerPreview, setBannerPreview] = useState("");
   const bannerFileRef = useRef(null);
 
-  // Logo
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState("");
   const logoFileRef = useRef(null);
 
-  // local small inputs
+  // small inputs
   const [tagInput, setTagInput] = useState("");
   const [eligibilityInput, setEligibilityInput] = useState("");
   const [socialLabel, setSocialLabel] = useState("");
@@ -123,7 +171,7 @@ const CreateEvent = () => {
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   };
 
-  /* ------------ helpers: lists ------------ */
+  // lists
   const addTag = (e) => {
     e?.preventDefault?.();
     const t = tagInput.trim();
@@ -197,7 +245,7 @@ const CreateEvent = () => {
       timeline: f.timeline.filter((_, i) => i !== idx),
     }));
 
-  /* ------------ uploads ------------ */
+  // uploads
   const onPickBanner = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -206,7 +254,6 @@ const CreateEvent = () => {
     reader.onload = () => setBannerPreview(reader.result);
     reader.readAsDataURL(file);
   };
-
   const onPickLogo = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -216,8 +263,8 @@ const CreateEvent = () => {
     reader.readAsDataURL(file);
   };
 
-  /* ------------ validations ------------ */
-  const canSubmit = useMemo(() => {
+  // validations
+  const canSubmitDetails = useMemo(() => {
     const required = [
       "title",
       "organization",
@@ -238,10 +285,9 @@ const CreateEvent = () => {
 
   const [submitting, setSubmitting] = useState(false);
 
-  const onSubmit = async (e) => {
+  const onCreate = async (e) => {
     e.preventDefault();
-    if (!canSubmit || submitting || actionLoading) return;
-
+    if (!canSubmitDetails || submitting || actionLoading) return;
     setSubmitting(true);
     try {
       const fd = new FormData();
@@ -254,10 +300,12 @@ const CreateEvent = () => {
       if (bannerFile) fd.append("banner", bannerFile);
       if (logoFile) fd.append("logo", logoFile);
 
-      // ✅ actually hit the API
+      // attach ticket template
+      fd.append("ticketTemplate", JSON.stringify(ticketTemplate));
+
       const created = await createEvent(fd);
-      if (created?._id || created?.slug) {
-        navigate(`/events`);
+      if (created?._id || created?.slug || created?.id) {
+        navigate("/events");
         return;
       }
     } catch (err) {
@@ -299,7 +347,7 @@ const CreateEvent = () => {
         }}
       />
 
-      {/* Banner (full width) */}
+      {/* Banner */}
       <div className="relative z-10 w-full">
         <div className="relative w-full h-[180px] md:h-[260px]">
           <div className="absolute inset-0">
@@ -319,7 +367,6 @@ const CreateEvent = () => {
             )}
           </div>
 
-          {/* header overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#05070d] via-transparent to-transparent" />
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-[92%] max-w-[1100px] flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -331,730 +378,969 @@ const CreateEvent = () => {
               </div>
               <h1 className="text-lg md:text-xl font-semibold tracking-tight">
                 <span className="font-forum text-[#19cfbc]">SuperPaas</span>{" "}
-                <span className="text-white/85">Create Event</span>
+                <span className="text-white/85">
+                  {step === 1 ? "Create Event" : "Choose Ticket Style"}
+                </span>
               </h1>
             </div>
             <button
-              onClick={() => navigate(-1)}
-              className="h-9 px-3 rounded-xl border border-white/10 bg-white/5 text-xs md:text-sm hover:bg-white/10 transition"
+              onClick={() => (step === 1 ? navigate(-1) : setStep(1))}
+              className="h-9 px-3 rounded-xl border border-white/10 bg-white/5 text-xs md:text-sm hover:bg-white/10 transition inline-flex items-center gap-2"
             >
-              Back
+              <ArrowLeft className="h-4 w-4" />
+              {step === 1 ? "Back" : "Back to details"}
             </button>
           </div>
         </div>
 
-        {/* Header controls UNDER banner: Logo + Banner + Color */}
-        <div className="mx-auto w-[92%] max-w-[1100px] mt-5 mb-4 relative z-10">
-          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            {/* Logo uploader + preview */}
-            <div className="flex items-center gap-3">
-              <div className="relative h-16 w-16 md:h-20 md:w-20 overflow-hidden rounded-xl border border-white/10 bg-[#0b1020]/40">
-                {logoPreview ? (
-                  <img
-                    src={logoPreview}
-                    alt="Logo"
-                    className="h-full w-full object-cover"
+        {/* Header controls below banner — only in step 1 */}
+        {step === 1 && (
+          <div className="mx-auto w-[92%] max-w-[1100px] mt-5 mb-4 relative z-10">
+            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              {/* Logo */}
+              <div className="flex items-center gap-3">
+                <div className="relative h-16 w-16 md:h-20 md:w-20 overflow-hidden rounded-xl border border-white/10 bg-[#0b1020]/40">
+                  {logoPreview ? (
+                    <img
+                      src={logoPreview}
+                      alt="Logo"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full grid place-items-center text-[10px] text-white/50">
+                      Logo
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={logoFileRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={onPickLogo}
+                    className="hidden"
                   />
-                ) : (
-                  <div className="h-full w-full grid place-items-center text-[10px] text-white/50">
-                    Logo
-                  </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => logoFileRef.current?.click()}
+                    className="inline-flex items-center gap-2 h-9 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs md:text-sm transition"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload logo
+                  </button>
+                </div>
               </div>
+
+              {/* Banner + color */}
               <div className="flex items-center gap-2">
                 <input
-                  ref={logoFileRef}
+                  ref={bannerFileRef}
                   type="file"
                   accept="image/*"
-                  onChange={onPickLogo}
+                  onChange={onPickBanner}
                   className="hidden"
                 />
                 <button
                   type="button"
-                  onClick={() => logoFileRef.current?.click()}
+                  onClick={() => bannerFileRef.current?.click()}
                   className="inline-flex items-center gap-2 h-9 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs md:text-sm transition"
                 >
                   <Upload className="h-4 w-4" />
-                  Upload logo
+                  Upload banner
                 </button>
+                <input
+                  type="color"
+                  name="bannerColor"
+                  value={form.bannerColor}
+                  onChange={onChange}
+                  className="h-9 w-9 p-1 rounded-lg border border-white/10 bg-white/5"
+                  title="Accent color"
+                />
               </div>
-            </div>
-
-            {/* Banner + color controls */}
-            <div className="flex items-center gap-2">
-              <input
-                ref={bannerFileRef}
-                type="file"
-                accept="image/*"
-                onChange={onPickBanner}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => bannerFileRef.current?.click()}
-                className="inline-flex items-center gap-2 h-9 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs md:text-sm transition"
-              >
-                <Upload className="h-4 w-4" />
-                Upload banner
-              </button>
-              <input
-                type="color"
-                name="bannerColor"
-                value={form.bannerColor}
-                onChange={onChange}
-                className="h-9 w-9 p-1 rounded-lg border border-white/10 bg-white/5"
-                title="Accent color"
-              />
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Body */}
-      <form
-        onSubmit={onSubmit}
-        className="relative z-10 mx-auto w-[92%] max-w-[1100px] pb-10 grid grid-cols-1 lg:grid-cols-3 gap-4"
-      >
-        {/* Left (2 cols) */}
-        <section className="lg:col-span-2 space-y-4">
-          <Card title="Basic Details">
-            <div className="grid md:grid-cols-2 gap-3">
-              <Field
-                label="Event title"
-                name="title"
-                value={form.title}
-                onChange={onChange}
-                required
-                placeholder="e.g., TechX Summit 2025"
-              />
-              <Field
-                label="Subtitle (optional)"
-                name="subtitle"
-                value={form.subtitle}
-                onChange={onChange}
-                placeholder="e.g., Future of AI & Startups"
-              />
-              <Field
-                label="Organization"
-                name="organization"
-                value={form.organization}
-                onChange={onChange}
-                required
-                icon={<Building2 className="h-4 w-4 text-white/60" />}
-                placeholder="Your institute or company"
-              />
-              <Select
-                label="Category"
-                name="category"
-                value={form.category}
-                onChange={onChange}
-                required
-                options={[
-                  "Conference",
-                  "Workshop",
-                  "Meetup",
-                  "Hackathon",
-                  "College Fest",
-                  "Webinar",
-                  "Competition",
-                ]}
-              />
-            </div>
+      {/* Steps */}
+      {step === 1 ? (
+        <DetailsStep
+          form={form}
+          onChange={onChange}
+          addTag={addTag}
+          removeTag={removeTag}
+          tagInput={tagInput}
+          setTagInput={setTagInput}
+          addEligibility={addEligibility}
+          removeEligibility={removeEligibility}
+          eligibilityInput={eligibilityInput}
+          setEligibilityInput={setEligibilityInput}
+          socialLabel={socialLabel}
+          setSocialLabel={setSocialLabel}
+          socialUrl={socialUrl}
+          setSocialUrl={setSocialUrl}
+          addSocial={addSocial}
+          removeSocial={removeSocial}
+          stageDraft={stageDraft}
+          setStageDraft={setStageDraft}
+          addStage={addStage}
+          removeStage={removeStage}
+          timelineDraft={timelineDraft}
+          setTimelineDraft={setTimelineDraft}
+          addTimelineItem={addTimelineItem}
+          removeTimelineItem={removeTimelineItem}
+          logoPreview={logoPreview}
+          fmtDate={fmtDate}
+          canSubmitDetails={canSubmitDetails}
+          onNext={() => setStep(2)}
+        />
+      ) : (
+        <TicketStep
+          form={form}
+          logoPreview={logoPreview}
+          ticketTemplate={ticketTemplate}
+          setTicketTemplate={setTicketTemplate}
+          onCreate={onCreate}
+          submitting={submitting || actionLoading}
+        />
+      )}
 
-            <div className="grid md:grid-cols-3 gap-3 mt-3">
-              <Select
-                label="Event mode"
-                name="mode"
-                value={form.mode}
-                onChange={onChange}
-                options={["Offline", "Online", "Hybrid"]}
-              />
-              <Field
-                label="Start"
-                name="start"
-                type="datetime-local"
-                value={form.start}
-                onChange={onChange}
-                required
-                icon={<CalendarDays className="h-4 w-4 text-white/60" />}
-              />
-              <Field
-                label="End"
-                name="end"
-                type="datetime-local"
-                value={form.end}
-                onChange={onChange}
-                required
-                icon={<Clock4 className="h-4 w-4 text-white/60" />}
-              />
-            </div>
+      {(submitting || actionLoading) && <Loader />}
+    </div>
+  );
+};
 
-            <div className="grid md:grid-cols-3 gap-3 mt-3">
-              <Field
-                label="Registration deadline"
-                name="regDeadline"
-                type="datetime-local"
-                value={form.regDeadline}
-                onChange={onChange}
-                icon={<CalendarDays className="h-4 w-4 text-white/60" />}
-              />
-              <div>
-                <p className="text-xs text-white/60 mb-1">Single or Teamup ?</p>
-                <ToggleField
-                  label="Team-up event?"
-                  checked={form.isTeamEvent}
-                  onChange={(v) => setForm((f) => ({ ...f, isTeamEvent: v }))}
-                />
-              </div>
-              <div className="hidden md:block" aria-hidden />
-            </div>
+function DetailsStep(props) {
+  const {
+    form,
+    onChange,
+    addTag,
+    removeTag,
+    tagInput,
+    setTagInput,
+    addEligibility,
+    removeEligibility,
+    eligibilityInput,
+    setEligibilityInput,
+    socialLabel,
+    setSocialLabel,
+    socialUrl,
+    setSocialUrl,
+    addSocial,
+    removeSocial,
+    stageDraft,
+    setStageDraft,
+    addStage,
+    removeStage,
+    timelineDraft,
+    setTimelineDraft,
+    addTimelineItem,
+    removeTimelineItem,
+    logoPreview,
+    fmtDate,
+    canSubmitDetails,
+    onNext,
+  } = props;
 
-            {form.isTeamEvent && (
-              <div className="grid md:grid-cols-2 gap-3 mt-3">
-                <Field
-                  label="Team size (min)"
-                  name="teamMin"
-                  type="number"
-                  value={form.teamMin}
-                  onChange={onChange}
-                  placeholder="e.g., 1"
-                  icon={<Users className="h-4 w-4 text-white/60" />}
-                />
-                <Field
-                  label="Team size (max)"
-                  name="teamMax"
-                  type="number"
-                  value={form.teamMax}
-                  onChange={onChange}
-                  placeholder="e.g., 4"
-                  icon={<Users className="h-4 w-4 text-white/60" />}
-                />
-              </div>
-            )}
-
-            <Textarea
-              label="Description"
-              name="description"
-              value={form.description}
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (canSubmitDetails) onNext();
+      }}
+      className="relative z-10 mx-auto w-[92%] max-w-[1100px] pb-10 grid grid-cols-1 lg:grid-cols-3 gap-4"
+    >
+      {/* Left (2 cols) */}
+      <section className="lg:col-span-2 space-y-4">
+        <Card title="Basic Details">
+          <div className="grid md:grid-cols-2 gap-3">
+            <Field
+              label="Event title"
+              name="title"
+              value={form.title}
               onChange={onChange}
-              placeholder="Describe agenda, rounds, speakers, perks, etc."
+              required
+              placeholder="e.g., TechX Summit 2025"
             />
+            <Field
+              label="Subtitle (optional)"
+              name="subtitle"
+              value={form.subtitle}
+              onChange={onChange}
+              placeholder="e.g., Future of AI & Startups"
+            />
+            <Field
+              label="Organization"
+              name="organization"
+              value={form.organization}
+              onChange={onChange}
+              required
+              icon={<Building2 className="h-4 w-4 text-white/60" />}
+              placeholder="Your institute or company"
+            />
+            <Select
+              label="Category"
+              name="category"
+              value={form.category}
+              onChange={onChange}
+              required
+              options={[
+                "Conference",
+                "Workshop",
+                "Meetup",
+                "Hackathon",
+                "College Fest",
+                "Webinar",
+                "Competition",
+              ]}
+            />
+          </div>
 
-            {/* Tags */}
-            <div className="mt-3">
-              <label className="block text-xs text-white/70 mb-1">
-                Tags (press Enter or click Add)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addTag(e)}
-                  placeholder="e.g., Tech, AI, Startups"
-                  className="h-10 w-full rounded-lg border border-white/10 bg-[#0c1222]/60 px-3 text-sm outline-none placeholder:text-white/50"
-                />
-                <button
-                  onClick={addTag}
-                  className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm"
-                  type="button"
-                >
-                  Add
-                </button>
-              </div>
-              {form.tags.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {form.tags.map((t) => (
-                    <Chip key={t} onRemove={() => removeTag(t)}>
-                      <Tag className="h-3 w-3" />
-                      {t}
-                    </Chip>
-                  ))}
-                </div>
-              )}
+          <div className="grid md:grid-cols-3 gap-3 mt-3">
+            <Select
+              label="Event mode"
+              name="mode"
+              value={form.mode}
+              onChange={onChange}
+              options={["Offline", "Online", "Hybrid"]}
+            />
+            <Field
+              label="Start"
+              name="start"
+              type="datetime-local"
+              value={form.start}
+              onChange={onChange}
+              required
+              icon={<CalendarDays className="h-4 w-4 text-white/60" />}
+            />
+            <Field
+              label="End"
+              name="end"
+              type="datetime-local"
+              value={form.end}
+              onChange={onChange}
+              required
+              icon={<Clock4 className="h-4 w-4 text-white/60" />}
+            />
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-3 mt-3">
+            <Field
+              label="Registration deadline"
+              name="regDeadline"
+              type="datetime-local"
+              value={form.regDeadline}
+              onChange={onChange}
+              icon={<CalendarDays className="h-4 w-4 text-white/60" />}
+            />
+            <div>
+              <p className="text-xs text-white/60 mb-1">Single or Teamup ?</p>
+              <ToggleField
+                label="Team-up event?"
+                checked={form.isTeamEvent}
+                onChange={(v) =>
+                  onChange({
+                    target: {
+                      name: "isTeamEvent",
+                      type: "checkbox",
+                      checked: v,
+                    },
+                  })
+                }
+              />
             </div>
-          </Card>
+            <div className="hidden md:block" aria-hidden />
+          </div>
 
-          <Card title="Venue">
-            <div className="grid md:grid-cols-2 gap-3">
+          {form.isTeamEvent && (
+            <div className="grid md:grid-cols-2 gap-3 mt-3">
               <Field
-                label="Venue name"
-                name="venueName"
-                value={form.venueName}
+                label="Team size (min)"
+                name="teamMin"
+                type="number"
+                value={form.teamMin}
                 onChange={onChange}
-                placeholder="Auditorium A"
-                icon={<MapPin className="h-4 w-4 text-white/60" />}
+                placeholder="e.g., 1"
+                icon={<Users className="h-4 w-4 text-white/60" />}
               />
               <Field
-                label="Address"
-                name="address"
-                value={form.address}
+                label="Team size (max)"
+                name="teamMax"
+                type="number"
+                value={form.teamMax}
                 onChange={onChange}
-                placeholder="Street, area"
-              />
-              <Field
-                label="City"
-                name="city"
-                value={form.city}
-                onChange={onChange}
-                required
-              />
-              <Field
-                label="State"
-                name="state"
-                value={form.state}
-                onChange={onChange}
-              />
-              <Field
-                label="Pincode"
-                name="pincode"
-                value={form.pincode}
-                onChange={onChange}
+                placeholder="e.g., 4"
+                icon={<Users className="h-4 w-4 text-white/60" />}
               />
             </div>
-          </Card>
+          )}
 
-          <Card title="Eligibility">
-            <p className="text-xs text-white/60 mb-2">
-              Add multiple criteria (e.g., College year, Branch, Age ≥18, Open
-              to all, etc.)
-            </p>
+          <Textarea
+            label="Description"
+            name="description"
+            value={form.description}
+            onChange={onChange}
+            placeholder="Describe agenda, rounds, speakers, perks, etc."
+          />
+
+          {/* Tags */}
+          <div className="mt-3">
+            <label className="block text-xs text-white/70 mb-1">
+              Tags (press Enter or click Add)
+            </label>
             <div className="flex gap-2">
               <input
                 type="text"
-                value={eligibilityInput}
-                onChange={(e) => setEligibilityInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addEligibility(e)}
-                placeholder="e.g., Undergraduate students, Year 2 & above"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addTag(e)}
+                placeholder="e.g., Tech, AI, Startups"
                 className="h-10 w-full rounded-lg border border-white/10 bg-[#0c1222]/60 px-3 text-sm outline-none placeholder:text-white/50"
               />
               <button
-                onClick={addEligibility}
+                onClick={addTag}
                 className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm"
                 type="button"
               >
                 Add
               </button>
             </div>
-            {form.eligibility.length > 0 && (
-              <ul className="mt-3 space-y-2">
-                {form.eligibility.map((el, idx) => (
-                  <li
-                    key={`${el}-${idx}`}
-                    className="flex items-center justify-between rounded-lg border border-white/10 bg-[#0b1020]/40 px-3 py-2 text-sm"
-                  >
-                    <span className="text-white/85">{el}</span>
-                    <button
-                      type="button"
-                      className="text-white/70 hover:text-white"
-                      onClick={() => removeEligibility(el)}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-
-          <Card title="Stages / Rounds">
-            <p className="text-xs text-white/60 mb-2">
-              Add stages like Registration, Screening, Round 1, Finals, etc.
-            </p>
-
-            <div className="grid md:grid-cols-2 gap-3">
-              <Field
-                label="Stage title"
-                value={stageDraft.title}
-                onChange={(e) =>
-                  setStageDraft((s) => ({ ...s, title: e.target.value }))
-                }
-                placeholder="e.g., Round 1: Submission"
-              />
-              <Select
-                label="Mode"
-                value={stageDraft.mode}
-                onChange={(e) =>
-                  setStageDraft((s) => ({ ...s, mode: e.target.value }))
-                }
-                options={["Offline", "Online", "Hybrid"]}
-              />
-              <Field
-                label="Start"
-                type="datetime-local"
-                value={stageDraft.start}
-                onChange={(e) =>
-                  setStageDraft((s) => ({ ...s, start: e.target.value }))
-                }
-                icon={<CalendarDays className="h-4 w-4 text-white/60" />}
-              />
-              <Field
-                label="End"
-                type="datetime-local"
-                value={stageDraft.end}
-                onChange={(e) =>
-                  setStageDraft((s) => ({ ...s, end: e.target.value }))
-                }
-                icon={<Clock4 className="h-4 w-4 text-white/60" />}
-              />
-            </div>
-            <Textarea
-              label="Description"
-              value={stageDraft.description}
-              onChange={(e) =>
-                setStageDraft((s) => ({ ...s, description: e.target.value }))
-              }
-              placeholder="What happens in this round, deliverables, scoring…"
-            />
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={addStage}
-                className="inline-flex items-center gap-2 h-10 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm transition"
-              >
-                <Plus className="h-4 w-4" />
-                Add stage
-              </button>
-            </div>
-
-            {form.stages.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {form.stages.map((st, idx) => (
-                  <div
-                    key={`${st.title}-${idx}`}
-                    className="rounded-xl border border-white/10 bg-[#0b1020]/40 p-3 text-sm"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium text-white/90">
-                        {st.title}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeStage(idx)}
-                        className="text-white/70 hover:text-white"
-                        aria-label="Remove stage"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-3 text-xs text-white/70">
-                      {st.start && <span>Start: {fmtDate(st.start)}</span>}
-                      {st.end && <span>End: {fmtDate(st.end)}</span>}
-                      <span>Mode: {st.mode}</span>
-                    </div>
-                    {st.description && (
-                      <p className="mt-2 text-white/80">{st.description}</p>
-                    )}
-                  </div>
+            {form.tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {form.tags.map((t) => (
+                  <Chip key={t} onRemove={() => removeTag(t)}>
+                    <Tag className="h-3 w-3" />
+                    {t}
+                  </Chip>
                 ))}
               </div>
             )}
-          </Card>
+          </div>
+        </Card>
 
-          <Card title="Timeline">
-            <p className="text-xs text-white/60 mb-2">
-              Add key milestones like “Reg opens”, “Results announced”, etc.
-            </p>
-            <div className="grid md:grid-cols-3 gap-3">
-              <Field
-                label="Title"
-                value={timelineDraft.title}
-                onChange={(e) =>
-                  setTimelineDraft((s) => ({ ...s, title: e.target.value }))
-                }
-                placeholder="e.g., Results announced"
-              />
-              <Field
-                label="Date & time"
-                type="datetime-local"
-                value={timelineDraft.date}
-                onChange={(e) =>
-                  setTimelineDraft((s) => ({ ...s, date: e.target.value }))
-                }
-                icon={<CalendarDays className="h-4 w-4 text-white/60" />}
-              />
-              <Field
-                label="Note (optional)"
-                value={timelineDraft.note}
-                onChange={(e) =>
-                  setTimelineDraft((s) => ({ ...s, note: e.target.value }))
-                }
-                placeholder="Short note"
-              />
-            </div>
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={addTimelineItem}
-                className="inline-flex items-center gap-2 h-10 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm transition"
-              >
-                <Plus className="h-4 w-4" />
-                Add timeline item
-              </button>
-            </div>
-
-            {form.timeline.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {form.timeline.map((t, idx) => (
-                  <div
-                    key={`${t.title}-${idx}`}
-                    className="rounded-xl border border-white/10 bg-[#0b1020]/40 p-3 text-sm flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="font-medium text-white/90">{t.title}</div>
-                      <div className="text-xs text-white/70">
-                        {fmtDate(t.date)} {t.note ? `• ${t.note}` : ""}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeTimelineItem(idx)}
-                      className="text-white/70 hover:text-white"
-                      aria-label="Remove item"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <Card title="Additional Details">
-            <div className="grid md:grid-cols-2 gap-3">
-              <Textarea
-                label="Prizes (if any)"
-                name="prizes"
-                value={form.prizes}
-                onChange={onChange}
-                placeholder="Prize pool, breakdown, perks for winners…"
-              />
-              <Textarea
-                label="Rewards & Benefits"
-                name="rewards"
-                value={form.rewards}
-                onChange={onChange}
-                placeholder="Certificates, goodies, internships, credits…"
-              />
-              <Textarea
-                label="Submission format"
-                name="submissionFormat"
-                value={form.submissionFormat}
-                onChange={onChange}
-                placeholder="What to submit, file types, size limits, links…"
-              />
-              <Textarea
-                label="Judging criteria"
-                name="judgingCriteria"
-                value={form.judgingCriteria}
-                onChange={onChange}
-                placeholder="Innovation, impact, feasibility, presentation…"
-              />
-              <Textarea
-                label="Resources (optional)"
-                name="resources"
-                value={form.resources}
-                onChange={onChange}
-                placeholder="Reference docs, datasets, design assets, APIs…"
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <Field
-                  label="Contact name"
-                  name="contactName"
-                  value={form.contactName}
-                  onChange={onChange}
-                />
-                <Field
-                  label="Contact email"
-                  name="contactEmail"
-                  value={form.contactEmail}
-                  onChange={onChange}
-                />
-                <Field
-                  label="Contact phone"
-                  name="contactPhone"
-                  value={form.contactPhone}
-                  onChange={onChange}
-                />
-                <Field
-                  label="FAQ link (optional)"
-                  name="faqLink"
-                  value={form.faqLink}
-                  onChange={onChange}
-                  icon={<ListChecks className="h-4 w-4 text-white/60" />}
-                />
-              </div>
-            </div>
-
-            {/* socials / website */}
-            <div className="mt-3 grid md:grid-cols-3 gap-3">
-              <Field
-                label="Website (optional)"
-                name="website"
-                value={form.website}
-                onChange={onChange}
-                icon={<Globe2 className="h-4 w-4 text-white/60" />}
-              />
-              <Field
-                label="Social label"
-                value={socialLabel}
-                onChange={(e) => setSocialLabel(e.target.value)}
-                placeholder="e.g., Instagram"
-                icon={<Link2 className="h-4 w-4 text-white/60" />}
-              />
-              <Field
-                label="Social URL"
-                value={socialUrl}
-                onChange={(e) => setSocialUrl(e.target.value)}
-                placeholder="https://…"
-              />
-            </div>
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={addSocial}
-                className="inline-flex items-center gap-2 h-10 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm transition"
-              >
-                <Plus className="h-4 w-4" />
-                Add social link
-              </button>
-            </div>
-            {form.socials.length > 0 && (
-              <ul className="mt-3 space-y-2">
-                {form.socials.map((s, idx) => (
-                  <li
-                    key={`${s.label}-${idx}`}
-                    className="flex items-center justify-between rounded-lg border border-white/10 bg-[#0b1020]/40 px-3 py-2 text-sm"
-                  >
-                    <span className="text-white/85">
-                      <b>{s.label}:</b> {s.url}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeSocial(idx)}
-                      className="text-white/70 hover:text-white"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </section>
-
-        {/* Right column */}
-        <section className="space-y-4">
-          <Card title="Ticketing">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-white/80">
-                This is a paid event
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  setForm((f) => ({
-                    ...f,
-                    isPaid: !f.isPaid,
-                    price: f.isPaid ? "" : f.price,
-                  }))
-                }
-                className={`h-7 w-12 rounded-full border border-white/10 transition ${
-                  form.isPaid ? "bg-blue-600" : "bg-white/10"
-                }`}
-                aria-pressed={form.isPaid}
-              >
-                <span
-                  className={`block h-6 w-6 rounded-full bg-white translate-x-0.5 transition ${
-                    form.isPaid ? "translate-x-[22px]" : ""
-                  }`}
-                />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              <Field
-                label="Price"
-                name="price"
-                type="number"
-                value={form.isPaid ? form.price : ""}
-                onChange={onChange}
-                placeholder={form.isPaid ? "e.g., 499" : "Free"}
-                disabled={!form.isPaid}
-                icon={<IndianRupee className="h-4 w-4 text-white/60" />}
-              />
-              <Field
-                label="Capacity"
-                name="capacity"
-                type="number"
-                value={form.capacity}
-                onChange={onChange}
-                placeholder="Max tickets (optional)"
-                icon={<Users className="h-4 w-4 text-white/60" />}
-              />
-            </div>
-            <p className="mt-2 text-xs text-white/60">
-              Payments issue QR tickets with scan-ready check-ins.
-            </p>
-          </Card>
-
-          {/* Status & review & submit */}
-          <Card title="Publish">
-            <Select
-              label="Status"
-              name="status"
-              value={form.status}
+        <Card title="Venue">
+          <div className="grid md:grid-cols-2 gap-3">
+            <Field
+              label="Venue name"
+              name="venueName"
+              value={form.venueName}
               onChange={onChange}
-              options={["draft", "published", "private"]}
+              placeholder="Auditorium A"
+              icon={<MapPin className="h-4 w-4 text-white/60" />}
             />
+            <Field
+              label="Address"
+              name="address"
+              value={form.address}
+              onChange={onChange}
+              placeholder="Street, area"
+            />
+            <Field
+              label="City"
+              name="city"
+              value={form.city}
+              onChange={onChange}
+              required
+            />
+            <Field
+              label="State"
+              name="state"
+              value={form.state}
+              onChange={onChange}
+            />
+            <Field
+              label="Pincode"
+              name="pincode"
+              value={form.pincode}
+              onChange={onChange}
+            />
+          </div>
+        </Card>
 
-            <ul className="mt-3 space-y-2 text-xs text-white/70">
-              <ReviewItem ok={!!form.title} text="Title added" />
-              <ReviewItem ok={!!form.organization} text="Organization added" />
-              <ReviewItem ok={!!form.category} text="Category selected" />
-              <ReviewItem ok={!!form.start && !!form.end} text="Schedule set" />
-              <ReviewItem ok={!!form.city} text="Venue city added" />
-              <ReviewItem
-                ok={!form.isPaid || String(form.price).trim() !== ""}
-                text={form.isPaid ? "Price set" : "Free event"}
-              />
-              <ReviewItem
-                ok={
-                  !form.isTeamEvent ||
-                  ((Number(form.teamMin) > 0 || Number(form.teamMax) > 0) &&
-                    Number(form.teamMax || 0) >= Number(form.teamMin || 0))
-                }
-                text={
-                  form.isTeamEvent ? "Team size valid" : "Individual allowed"
-                }
-              />
-            </ul>
-
+        <Card title="Eligibility">
+          <p className="text-xs text-white/60 mb-2">
+            Add multiple criteria (e.g., College year, Branch, Age ≥18, Open to
+            all, etc.)
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={eligibilityInput}
+              onChange={(e) => setEligibilityInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addEligibility(e)}
+              placeholder="e.g., Undergraduate students, Year 2 & above"
+              className="h-10 w-full rounded-lg border border-white/10 bg-[#0c1222]/60 px-3 text-sm outline-none placeholder:text-white/50"
+            />
             <button
-              type="submit"
-              disabled={!canSubmit || submitting || actionLoading}
-              className={`mt-4 w-full h-11 rounded-xl text-sm inline-flex items-center justify-center transition ${
-                !canSubmit || submitting || actionLoading
-                  ? "bg-white/10 cursor-not-allowed text-white/60"
-                  : "bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500"
-              }`}
+              onClick={addEligibility}
+              className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm"
+              type="button"
             >
-              {submitting || actionLoading ? "Submitting…" : "Create Event"}
+              Add
             </button>
-            <p className="mt-2 text-[11px] text-white/50 text-center">
-              By creating, you agree to our Terms & Policies.
-            </p>
-          </Card>
-        </section>
-      </form>
+          </div>
+          {form.eligibility.length > 0 && (
+            <ul className="mt-3 space-y-2">
+              {form.eligibility.map((el, idx) => (
+                <li
+                  key={`${el}-${idx}`}
+                  className="flex items-center justify-between rounded-lg border border-white/10 bg-[#0b1020]/40 px-3 py-2 text-sm"
+                >
+                  <span className="text-white/85">{el}</span>
+                  <button
+                    type="button"
+                    className="text-white/70 hover:text-white"
+                    onClick={() => removeEligibility(el)}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
-      {/* Submitting overlay */}
-      {(submitting || actionLoading) && <Loader />}
+        <Card title="Stages / Rounds">
+          <p className="text-xs text-white/60 mb-2">
+            Add stages like Registration, Screening, Round 1, Finals, etc.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-3">
+            <Field
+              label="Stage title"
+              value={stageDraft.title}
+              onChange={(e) =>
+                setStageDraft((s) => ({ ...s, title: e.target.value }))
+              }
+              placeholder="e.g., Round 1: Submission"
+            />
+            <Select
+              label="Mode"
+              value={stageDraft.mode}
+              onChange={(e) =>
+                setStageDraft((s) => ({ ...s, mode: e.target.value }))
+              }
+              options={["Offline", "Online", "Hybrid"]}
+            />
+            <Field
+              label="Start"
+              type="datetime-local"
+              value={stageDraft.start}
+              onChange={(e) =>
+                setStageDraft((s) => ({ ...s, start: e.target.value }))
+              }
+              icon={<CalendarDays className="h-4 w-4 text-white/60" />}
+            />
+            <Field
+              label="End"
+              type="datetime-local"
+              value={stageDraft.end}
+              onChange={(e) =>
+                setStageDraft((s) => ({ ...s, end: e.target.value }))
+              }
+              icon={<Clock4 className="h-4 w-4 text-white/60" />}
+            />
+          </div>
+          <Textarea
+            label="Description"
+            value={stageDraft.description}
+            onChange={(e) =>
+              setStageDraft((s) => ({ ...s, description: e.target.value }))
+            }
+            placeholder="What happens in this round, deliverables, scoring…"
+          />
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={addStage}
+              className="inline-flex items-center gap-2 h-10 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm transition"
+            >
+              <Plus className="h-4 w-4" /> Add stage
+            </button>
+          </div>
+
+          {form.stages.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {form.stages.map((st, idx) => (
+                <div
+                  key={`${st.title}-${idx}`}
+                  className="rounded-xl border border-white/10 bg-[#0b1020]/40 p-3 text-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-white/90">{st.title}</div>
+                    <button
+                      type="button"
+                      onClick={() => removeStage(idx)}
+                      className="text-white/70 hover:text-white"
+                      aria-label="Remove stage"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-3 text-xs text-white/70">
+                    {st.start && <span>Start: {fmtDate(st.start)}</span>}
+                    {st.end && <span>End: {fmtDate(st.end)}</span>}
+                    <span>Mode: {st.mode}</span>
+                  </div>
+                  {st.description && (
+                    <p className="mt-2 text-white/80">{st.description}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card title="Timeline">
+          <p className="text-xs text-white/60 mb-2">
+            Add key milestones like “Reg opens”, “Results announced”, etc.
+          </p>
+          <div className="grid md:grid-cols-3 gap-3">
+            <Field
+              label="Title"
+              value={timelineDraft.title}
+              onChange={(e) =>
+                setTimelineDraft((s) => ({ ...s, title: e.target.value }))
+              }
+              placeholder="e.g., Results announced"
+            />
+            <Field
+              label="Date & time"
+              type="datetime-local"
+              value={timelineDraft.date}
+              onChange={(e) =>
+                setTimelineDraft((s) => ({ ...s, date: e.target.value }))
+              }
+              icon={<CalendarDays className="h-4 w-4 text-white/60" />}
+            />
+            <Field
+              label="Note (optional)"
+              value={timelineDraft.note}
+              onChange={(e) =>
+                setTimelineDraft((s) => ({ ...s, note: e.target.value }))
+              }
+              placeholder="Short note"
+            />
+          </div>
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={addTimelineItem}
+              className="inline-flex items-center gap-2 h-10 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm transition"
+            >
+              <Plus className="h-4 w-4" /> Add timeline item
+            </button>
+          </div>
+
+          {form.timeline.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {form.timeline.map((t, idx) => (
+                <div
+                  key={`${t.title}-${idx}`}
+                  className="rounded-xl border border-white/10 bg-[#0b1020]/40 p-3 text-sm flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-medium text-white/90">{t.title}</div>
+                    <div className="text-xs text-white/70">
+                      {fmtDate(t.date)} {t.note ? `• ${t.note}` : ""}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeTimelineItem(idx)}
+                    className="text-white/70 hover:text-white"
+                    aria-label="Remove item"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card title="Additional Details">
+          <div className="grid md:grid-cols-2 gap-3">
+            <Textarea
+              label="Prizes (if any)"
+              name="prizes"
+              value={form.prizes}
+              onChange={onChange}
+              placeholder="Prize pool, breakdown, perks for winners…"
+            />
+            <Textarea
+              label="Rewards & Benefits"
+              name="rewards"
+              value={form.rewards}
+              onChange={onChange}
+              placeholder="Certificates, goodies, internships, credits…"
+            />
+            <Textarea
+              label="Submission format"
+              name="submissionFormat"
+              value={form.submissionFormat}
+              onChange={onChange}
+              placeholder="What to submit, file types, size limits, links…"
+            />
+            <Textarea
+              label="Judging criteria"
+              name="judgingCriteria"
+              value={form.judgingCriteria}
+              onChange={onChange}
+              placeholder="Innovation, impact, feasibility, presentation…"
+            />
+            <Textarea
+              label="Resources (optional)"
+              name="resources"
+              value={form.resources}
+              onChange={onChange}
+              placeholder="Reference docs, datasets, design assets, APIs…"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label="Contact name"
+                name="contactName"
+                value={form.contactName}
+                onChange={onChange}
+              />
+              <Field
+                label="Contact email"
+                name="contactEmail"
+                value={form.contactEmail}
+                onChange={onChange}
+              />
+              <Field
+                label="Contact phone"
+                name="contactPhone"
+                value={form.contactPhone}
+                onChange={onChange}
+              />
+              <Field
+                label="FAQ link (optional)"
+                name="faqLink"
+                value={form.faqLink}
+                onChange={onChange}
+                icon={<ListChecks className="h-4 w-4 text-white/60" />}
+              />
+            </div>
+          </div>
+
+          {/* socials / website */}
+          <div className="mt-3 grid md:grid-cols-3 gap-3">
+            <Field
+              label="Website (optional)"
+              name="website"
+              value={form.website}
+              onChange={onChange}
+              icon={<Globe2 className="h-4 w-4 text-white/60" />}
+            />
+            <Field
+              label="Social label"
+              value={socialLabel}
+              onChange={(e) => setSocialLabel(e.target.value)}
+              placeholder="e.g., Instagram"
+              icon={<Link2 className="h-4 w-4 text-white/60" />}
+            />
+            <Field
+              label="Social URL"
+              value={socialUrl}
+              onChange={(e) => setSocialUrl(e.target.value)}
+              placeholder="https://…"
+            />
+          </div>
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={addSocial}
+              className="inline-flex items-center gap-2 h-10 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm transition"
+            >
+              <Plus className="h-4 w-4" /> Add social link
+            </button>
+          </div>
+          {form.socials.length > 0 && (
+            <ul className="mt-3 space-y-2">
+              {form.socials.map((s, idx) => (
+                <li
+                  key={`${s.label}-${idx}`}
+                  className="flex items-center justify-between rounded-lg border border-white/10 bg-[#0b1020]/40 px-3 py-2 text-sm"
+                >
+                  <span className="text-white/85">
+                    <b>{s.label}:</b> {s.url}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeSocial(idx)}
+                    className="text-white/70 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </section>
+
+      {/* Right column */}
+      <section className="space-y-4">
+        <Card title="Ticketing">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm text-white/80">This is a paid event</span>
+            <button
+              type="button"
+              onClick={() =>
+                onChange({
+                  target: {
+                    name: "isPaid",
+                    type: "checkbox",
+                    checked: !form.isPaid,
+                  },
+                })
+              }
+              className={`h-7 w-12 rounded-full border border-white/10 transition ${
+                form.isPaid ? "bg-blue-600" : "bg-white/10"
+              }`}
+              aria-pressed={form.isPaid}
+            >
+              <span
+                className={`block h-6 w-6 rounded-full bg-white translate-x-0.5 transition ${
+                  form.isPaid ? "translate-x-[22px]" : ""
+                }`}
+              />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            <Field
+              label="Price"
+              name="price"
+              type="number"
+              value={form.isPaid ? form.price : ""}
+              onChange={onChange}
+              placeholder={form.isPaid ? "e.g., 499" : "Free"}
+              disabled={!form.isPaid}
+              icon={<IndianRupee className="h-4 w-4 text-white/60" />}
+            />
+            <Field
+              label="Capacity"
+              name="capacity"
+              type="number"
+              value={form.capacity}
+              onChange={onChange}
+              placeholder="Max tickets (optional)"
+              icon={<Users className="h-4 w-4 text-white/60" />}
+            />
+          </div>
+          <p className="mt-2 text-xs text-white/60">
+            Payments issue QR tickets with scan-ready check-ins.
+          </p>
+        </Card>
+
+        <Card title="Publish">
+          <Select
+            label="Status"
+            name="status"
+            value={form.status}
+            onChange={onChange}
+            options={["draft", "published", "private"]}
+          />
+          <ul className="mt-3 space-y-2 text-xs text-white/70">
+            <ReviewItem ok={!!form.title} text="Title added" />
+            <ReviewItem ok={!!form.organization} text="Organization added" />
+            <ReviewItem ok={!!form.category} text="Category selected" />
+            <ReviewItem ok={!!form.start && !!form.end} text="Schedule set" />
+            <ReviewItem ok={!!form.city} text="Venue city added" />
+            <ReviewItem
+              ok={!form.isPaid || String(form.price).trim() !== ""}
+              text={form.isPaid ? "Price set" : "Free event"}
+            />
+            <ReviewItem
+              ok={
+                !form.isTeamEvent ||
+                ((Number(form.teamMin) > 0 || Number(form.teamMax) > 0) &&
+                  Number(form.teamMax || 0) >= Number(form.teamMin || 0))
+              }
+              text={form.isTeamEvent ? "Team size valid" : "Individual allowed"}
+            />
+          </ul>
+
+          <button
+            type="submit"
+            disabled={!canSubmitDetails}
+            className={`mt-4 w-full h-11 rounded-xl text-sm inline-flex items-center justify-center gap-2 transition ${
+              !canSubmitDetails
+                ? "bg-white/10 cursor-not-allowed text-white/60"
+                : "bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500"
+            }`}
+          >
+            Next <ArrowRight className="h-4 w-4" />
+          </button>
+          <p className="mt-2 text-[11px] text-white/50 text-center">
+            You’ll pick a ticket style on the next step.
+          </p>
+        </Card>
+      </section>
+    </form>
+  );
+}
+
+function TicketStep({
+  form,
+  logoPreview,
+  ticketTemplate,
+  setTicketTemplate,
+  onCreate,
+  submitting,
+}) {
+  return (
+    <form
+      onSubmit={onCreate}
+      className="relative z-10 mx-auto w-[92%] max-w-[1100px] pb-10"
+    >
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm text-white/85 inline-flex items-center gap-2">
+            <TicketIcon className="h-4 w-4" /> Choose your ticket style
+          </p>
+          <span className="text-xs text-white/60">
+            Saved with the event; you can change later.
+          </span>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.key}
+              type="button"
+              onClick={() => setTicketTemplate(tpl)}
+              className={`group relative text-left rounded-2xl border ${
+                ticketTemplate.key === tpl.key
+                  ? "border-emerald-400/40"
+                  : "border-white/10"
+              } bg-white/5 hover:bg-white/10 transition p-3`}
+            >
+              <TicketPreview tpl={tpl} form={form} logoPreview={logoPreview} />
+              <div className="mt-3 flex items-center justify-between">
+                <div className="text-sm font-medium text-white/90">
+                  {tpl.name}
+                </div>
+                <span
+                  className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                    ticketTemplate.key === tpl.key
+                      ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+                      : "border-white/10 bg-white/5 text-white/70"
+                  }`}
+                >
+                  {ticketTemplate.key === tpl.key ? "Selected" : "Select"}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6 flex items-center justify-end">
+          <button
+            type="submit"
+            disabled={submitting}
+            className={`h-11 px-4 rounded-xl text-sm inline-flex items-center justify-center gap-2 transition ${
+              submitting
+                ? "bg-white/10 cursor-not-allowed text-white/60"
+                : "bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500"
+            }`}
+          >
+            {submitting ? "Creating…" : "Create Event"}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+function TicketPreview({ tpl, form, logoPreview }) {
+  const code = "SP-ABCD-1234";
+  const price = Number(form.price || 0);
+  const city = form.city || "Venue";
+  const cardStyle = tpl.palette.card.startsWith("linear")
+    ? { background: tpl.palette.card }
+    : { backgroundColor: tpl.palette.card };
+
+  return (
+    <div
+      className={`relative ${tpl.cornerStyle} border border-white/10 p-3`}
+      style={{ backgroundColor: tpl.palette.bg, minHeight: 148 }}
+    >
+      <div className={`relative ${tpl.cornerStyle} p-3`} style={cardStyle}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg overflow-hidden bg-black/30 border border-white/20 grid place-items-center">
+                {logoPreview ? (
+                  <img
+                    src={logoPreview}
+                    alt="logo"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-[10px] text-white/70">LOGO</span>
+                )}
+              </div>
+              <div className="text-xs" style={{ color: tpl.palette.text }}>
+                <div className="font-semibold line-clamp-1">
+                  {form.title || "Event Title"}
+                </div>
+                <div className="opacity-80 line-clamp-1">
+                  {form.organization || "Organizer"}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="mt-2 text-[11px]"
+              style={{ color: tpl.palette.text }}
+            >
+              <div className="opacity-90">
+                {new Date(form.start || Date.now()).toLocaleString()}
+              </div>
+              <div className="opacity-80">{city}</div>
+              <div className="opacity-80">
+                {price > 0 ? `₹ ${price}` : "Free"}
+              </div>
+            </div>
+          </div>
+
+          <div className="shrink-0 grid place-items-center">
+            <div className="h-20 w-20 rounded-md border border-white/30 bg-black/30 grid place-items-center">
+              <QrCode className="h-8 w-8 opacity-80" />
+            </div>
+            <div
+              className="mt-1 text-[10px] tracking-wider"
+              style={{ color: tpl.palette.text }}
+            >
+              {code}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between text-[11px]">
+          <span style={{ color: tpl.palette.text }}>
+            Holder: <b>John Doe</b>
+          </span>
+          <span
+            className="px-2 py-0.5 rounded-full border"
+            style={{
+              color: tpl.palette.accent,
+              borderColor: `${tpl.palette.accent}66`,
+              background: `${tpl.palette.accent}14`,
+            }}
+          >
+            {form.category || "Category"}
+          </span>
+        </div>
+      </div>
     </div>
   );
-};
+}
 
-/* ----------------- UI bits ----------------- */
-
+/* UI Primitives */
 function Card({ title, children }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
@@ -1067,7 +1353,6 @@ function Card({ title, children }) {
     </div>
   );
 }
-
 function Field({
   label,
   name,
@@ -1104,7 +1389,6 @@ function Field({
     </label>
   );
 }
-
 function Textarea({ label, name, value, onChange, placeholder, required }) {
   return (
     <label className="block">
@@ -1122,7 +1406,6 @@ function Textarea({ label, name, value, onChange, placeholder, required }) {
     </label>
   );
 }
-
 function Select({ label, name, value, onChange, options = [], required }) {
   return (
     <label className="block">
@@ -1150,7 +1433,6 @@ function Select({ label, name, value, onChange, options = [], required }) {
     </label>
   );
 }
-
 function ToggleField({ label, checked, onChange }) {
   return (
     <div className="flex items-center justify-between h-11 px-3 rounded-lg border border-white/10 bg-[#0c1222]/60">
@@ -1172,7 +1454,6 @@ function ToggleField({ label, checked, onChange }) {
     </div>
   );
 }
-
 function ReviewItem({ ok, text }) {
   return (
     <li
@@ -1197,7 +1478,6 @@ function ReviewItem({ ok, text }) {
     </li>
   );
 }
-
 function Chip({ children, onRemove }) {
   return (
     <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border border-white/10 bg-[#0b1020]/40">
