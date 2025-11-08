@@ -22,10 +22,12 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useEvents } from "../contexts/EventContext";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, logoutUser } = useAuth();
+  const { events, myEvents } = useEvents(); // 👈 use fetched events
 
   // --------- Profile (safe) ---------
   const first =
@@ -53,61 +55,75 @@ const Dashboard = () => {
     tokensIssued: 0,
   };
 
-  // Demo data
-  const eventsHosted = [
-    {
-      id: "techx-2025",
-      title: "TechX Summit 2025",
-      date: "2025-11-22T10:30:00",
-      venue: "Auditorium A",
-      price: 999,
-      category: "Conference",
-      tickets: 1200,
-      scans: 940,
-      status: "Published",
-      tags: ["Tech", "AI", "Startups"],
-    },
-    {
-      id: "growth-meetup",
-      title: "Growth Marketing Meetup",
-      date: "2026-01-08T18:30:00",
-      venue: "Room B1",
-      price: 199,
-      category: "Meetup",
-      tickets: 150,
-      scans: 95,
-      status: "Draft",
-      tags: ["Marketing", "Growth"],
-    },
-  ];
-
-  const eventsParticipated = [
-    {
-      id: "design-sprint",
-      title: "Design Sprint — Day 1",
-      date: "2025-12-03T09:00:00",
-      venue: "Studio 2",
-      category: "Workshop",
-      ticketId: "TCK-DS-4512",
-      checkedIn: true,
-    },
-    {
-      id: "hackathon-finale",
-      title: "Hackathon Finale Night",
-      date: "2025-12-12T20:00:00",
-      venue: "Hall C",
-      category: "Hackathon",
-      ticketId: "TCK-HK-8831",
-      checkedIn: false,
-    },
-  ];
+  // In case you later track participation separately, you can swap this:
+  const eventsHosted = myEvents || [];
+  const eventsParticipated = []; // no API yet, keeping empty placeholder
 
   // ✅ State
   const [tab, setTab] = useState("hosted");
   const [query, setQuery] = useState("");
 
+  // Map API event -> row shape dashboard expects
+  const normalizeHosted = (ev) => {
+    const id = ev._id || ev.id || ev.slug;
+    const title = ev.title || "Untitled Event";
+    const date = ev.start || ev.date || ev.createdAt;
+    const venue =
+      ev.venueName ||
+      [ev.address, ev.city, ev.state].filter(Boolean).join(", ") ||
+      ev.city ||
+      "—";
+    const price = Number(ev.isPaid ? ev.price || 0 : 0);
+    const category = ev.category || "Event";
+    const tickets = ev.capacity || 0; // if you have sales count, replace here
+    const scans = 0; // replace with check-ins metric when available
+    const status = (ev.status || "draft").toLowerCase();
+    const statusLabel =
+      status === "published"
+        ? "Published"
+        : status === "private"
+        ? "Private"
+        : "Draft";
+    const tags = Array.isArray(ev.tags) ? ev.tags : [];
+
+    return {
+      id,
+      title,
+      date,
+      venue,
+      price,
+      category,
+      tickets,
+      scans,
+      status: statusLabel,
+      tags,
+    };
+  };
+
+  const hostedRows = useMemo(
+    () => (eventsHosted || []).map(normalizeHosted),
+    [eventsHosted]
+  );
+
+  // If/when you have participant events, map them similarly
+  const participatedRows = useMemo(() => {
+    return (eventsParticipated || []).map((ev) => ({
+      id: ev._id || ev.id,
+      title: ev.title,
+      date: ev.start || ev.date,
+      venue:
+        ev.venueName ||
+        [ev.address, ev.city, ev.state].filter(Boolean).join(", ") ||
+        ev.city ||
+        "—",
+      category: ev.category,
+      ticketId: ev.ticketId || "—",
+      checkedIn: !!ev.checkedIn,
+    }));
+  }, [eventsParticipated]);
+
   const currentList = useMemo(() => {
-    const list = tab === "hosted" ? eventsHosted : eventsParticipated;
+    const list = tab === "hosted" ? hostedRows : participatedRows;
     const q = query.trim().toLowerCase();
     if (!q) return list;
     return list.filter((e) =>
@@ -115,7 +131,7 @@ const Dashboard = () => {
         .toLowerCase()
         .includes(q)
     );
-  }, [tab, query]);
+  }, [tab, query, hostedRows, participatedRows]);
 
   const fmtMoney = (n) =>
     `₹ ${Number(n || 0).toLocaleString(undefined, {
@@ -331,7 +347,9 @@ const Dashboard = () => {
             )}
             {currentList.length === 0 && (
               <div className="py-10 text-sm text-white/60 text-center">
-                No events found.
+                {tab === "hosted"
+                  ? "No hosted events yet. Create your first event!"
+                  : "No participated events yet."}
               </div>
             )}
           </div>
@@ -353,19 +371,15 @@ const Dashboard = () => {
               Upcoming Tasks
             </h3>
             <ul className="mt-3 space-y-3">
+              <Task title="Publish your next event" due="Soon" badge="Draft" />
               <Task
-                title="Publish Growth Marketing Meetup"
-                due="Nov 15, 2025"
-                badge="Draft"
-              />
-              <Task
-                title="Invite speakers for TechX Summit"
-                due="Nov 10, 2025"
+                title="Invite speakers & sponsors"
+                due="This week"
                 badge="Planning"
               />
               <Task
-                title="Finalize volunteer QR roles"
-                due="Nov 18, 2025"
+                title="Finalize volunteer roles"
+                due="Next week"
                 badge="Ops"
               />
             </ul>
@@ -386,21 +400,8 @@ const Dashboard = () => {
             <ul className="mt-3 space-y-3 text-sm text-white/75">
               <li className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5" />
-                52 tickets scanned for{" "}
-                <b className="font-medium ml-1">TechX Summit 2025</b>
-                <span className="ml-auto text-xs text-white/50">2h ago</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5" />
-                New registration: <b className="font-medium ml-1">Priya</b>{" "}
-                (Workshop: Design Sprint)
-                <span className="ml-auto text-xs text-white/50">5h ago</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5" />
-                Payout initiated —{" "}
-                <b className="font-medium ml-1">{fmtMoney(24000)}</b>
-                <span className="ml-auto text-xs text-white/50">Yesterday</span>
+                You created your account
+                <span className="ml-auto text-xs text-white/50">Welcome!</span>
               </li>
             </ul>
           </div>
@@ -503,6 +504,8 @@ const HostedRow = ({ ev, onOpen }) => (
           className={`text-[11px] px-2 py-0.5 rounded-full border ${
             ev.status === "Published"
               ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+              : ev.status === "Private"
+              ? "border-sky-400/30 bg-sky-400/10 text-sky-200"
               : "border-amber-400/30 bg-amber-400/10 text-amber-200"
           }`}
         >
@@ -522,6 +525,10 @@ const HostedRow = ({ ev, onOpen }) => (
         </span>
         <span className="inline-flex items-center gap-1">
           <QrCode className="h-3.5 w-3.5" /> {ev.scans} check-ins
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <IndianRupee className="h-3.5 w-3.5" />{" "}
+          {ev.price > 0 ? ev.price : "Free"}
         </span>
       </div>
       {ev.tags?.length > 0 && (
