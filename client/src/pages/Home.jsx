@@ -167,7 +167,7 @@ const Home = () => {
                 <ExternalLink className="h-4 w-4 opacity-70" />
               </button>
               <button
-                onClick={goTo("/events/new")}
+                onClick={goTo("/events/create")}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
               >
                 <Plus className="h-4 w-4" />
@@ -228,7 +228,7 @@ const Home = () => {
             title="Publish events fast"
             desc="Set up titles, schedules, pricing, and capacity — go live in minutes."
             cta="Create an event"
-            onClick={goTo("/events/new")}
+            onClick={goTo("/events/create")}
           />
           <OverviewCard
             icon={<Ticket className="h-5 w-5" />}
@@ -280,7 +280,7 @@ const Home = () => {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={goTo("/events/new")}
+              onClick={goTo("/events/create")}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
             >
               <Plus className="h-4 w-4" />

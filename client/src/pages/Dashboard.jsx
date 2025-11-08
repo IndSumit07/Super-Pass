@@ -168,7 +168,7 @@ const Dashboard = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate("/events/new")}
+              onClick={() => navigate("/events/create")}
               className="hidden md:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
             >
               <Plus className="h-4 w-4" />
@@ -219,7 +219,7 @@ const Dashboard = () => {
 
             <div className="mt-4 flex gap-2">
               <Link
-                to="/events/new"
+                to="/events/create"
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-3 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
               >
                 <Plus className="h-4 w-4" />
@@ -418,7 +418,7 @@ const Dashboard = () => {
           </div>
           <div className="flex gap-2">
             <Link
-              to="/events/new"
+              to="/events/create"
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
             >
               <Plus className="h-4 w-4" />

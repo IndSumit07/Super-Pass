@@ -4,12 +4,15 @@ import "./index.css";
 import App from "./App.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import { ToastProvider } from "./components/Toast.jsx";
+import { EventProvider } from "./contexts/EventContext.jsx";
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <ToastProvider>
       <AuthProvider>
-        <App />
+        <EventProvider>
+          <App />
+        </EventProvider>
       </AuthProvider>
     </ToastProvider>
   </BrowserRouter>

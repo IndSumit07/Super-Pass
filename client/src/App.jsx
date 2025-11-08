@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import PublicRoute from "./components/PublicRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
+import CreateEvent from "./pages/CreateEvent";
 
 const App = () => {
   return (
@@ -77,6 +78,14 @@ const App = () => {
             <PublicRoute>
               <ForgotPassword />
             </PublicRoute>
+          }
+        />
+        <Route
+          path="/events/create"
+          element={
+            <ProtectedRoute>
+              <CreateEvent />
+            </ProtectedRoute>
           }
         />
       </Routes>

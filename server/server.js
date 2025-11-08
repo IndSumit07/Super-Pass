@@ -4,6 +4,7 @@ import cors from "cors";
 import connectDB from "./configs/mongo.config.js";
 import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
+import eventRouter from "./routes/event.routes.js";
 
 const app = express();
 connectDB();
@@ -25,6 +26,7 @@ app.get("/ping", (req, res) => res.send("Server is Live ✅"));
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
+app.use("/api/events", eventRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   CalendarDays,
@@ -7,90 +7,76 @@ import {
   IndianRupee,
   Tag,
   Filter,
+  ArrowRight,
 } from "lucide-react";
+import { useEvents } from "../contexts/EventContext";
+import Loader from "../components/Loader";
 
-// Demo data — move to a shared file later (e.g., src/data/events.js)
-const EVENTS = [
-  {
-    id: "techx-2025",
-    title: "TechX Summit 2025",
-    date: "2025-11-22T10:30:00",
-    venue: "Auditorium A",
-    price: 999,
-    category: "Conference",
-    tags: ["Tech", "AI", "Startups"],
-    cover: null,
-    short: "A full-day summit on AI, product, and the future of software.",
-  },
-  {
-    id: "design-sprint",
-    title: "Design Sprint — Day 1",
-    date: "2025-12-03T09:00:00",
-    venue: "Studio 2",
-    price: 0,
-    category: "Workshop",
-    tags: ["Design", "UX"],
-    cover: null,
-    short: "Hands-on sprint to ideate, prototype, and validate UX flows.",
-  },
-  {
-    id: "hackathon-finale",
-    title: "Hackathon Finale Night",
-    date: "2025-12-12T20:00:00",
-    venue: "Hall C",
-    price: 299,
-    category: "Hackathon",
-    tags: ["Coding", "Teams"],
-    cover: null,
-    short: "Final presentations, jury, and awards with live audience.",
-  },
-  {
-    id: "growth-meetup",
-    title: "Growth Marketing Meetup",
-    date: "2026-01-08T18:30:00",
-    venue: "Room B1",
-    price: 199,
-    category: "Meetup",
-    tags: ["Marketing", "Growth"],
-    cover: null,
-    short: "Talks & networking on performance marketing and analytics.",
-  },
+const CATEGORIES = [
+  "All",
+  "Conference",
+  "Workshop",
+  "Hackathon",
+  "College Fest",
+  "Meetup",
+  "Webinar",
+  "Competition",
 ];
-
-const CATEGORIES = ["All", "Conference", "Workshop", "Hackathon", "Meetup"];
 
 const Events = () => {
   const navigate = useNavigate();
+  const { events, loading, fetchEvents } = useEvents();
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [paidOnly, setPaidOnly] = useState(false);
 
+  useEffect(() => {
+    // initial fetch; pass params if you want server filtering in future
+    fetchEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return EVENTS.filter((ev) => {
-      const okCat = category === "All" || ev.category === category;
-      const okPaid = !paidOnly || (paidOnly && ev.price > 0);
-      const okText =
-        !q ||
-        ev.title.toLowerCase().includes(q) ||
-        ev.venue.toLowerCase().includes(q) ||
-        ev.tags.join(" ").toLowerCase().includes(q) ||
-        ev.short.toLowerCase().includes(q);
-      return okCat && okPaid && okText;
-    }).sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [query, category, paidOnly]);
+    return (events || [])
+      .filter((ev) => {
+        const okCat = category === "All" || ev.category === category;
+        const price = Number(ev.price || 0);
+        const okPaid = !paidOnly || price > 0;
+        const haystack = [
+          ev.title,
+          ev.subtitle,
+          ev.venueName,
+          ev.city,
+          ev.category,
+          (ev.tags || []).join(" "),
+          ev.description,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        const okText = !q || haystack.includes(q);
+        return okCat && okPaid && okText;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.start || a.date || 0) - new Date(b.start || b.date || 0)
+      );
+  }, [events, query, category, paidOnly]);
 
   const goDetails = (id) => () => navigate(`/events/${id}`);
 
   const fmtDate = (iso) =>
-    new Date(iso).toLocaleString(undefined, {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    iso
+      ? new Date(iso).toLocaleString(undefined, {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "—";
 
   return (
     <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
@@ -111,14 +97,19 @@ const Events = () => {
         }}
       />
 
-      {/* Content */}
       <div className="relative z-10 mx-auto w-[92%] max-w-[1100px] py-6 md:py-10">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-xl md:text-2xl font-semibold tracking-tight">
-            <span className="font-forum text-[#19cfbc]">SuperPass</span>{" "}
+            <span className="font-forum text-[#19cfbc]">SuperPaas</span>{" "}
             <span className="text-white/80">Events</span>
           </h1>
+          <Link
+            to="/events/create"
+            className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+          >
+            Create Event
+          </Link>
         </div>
 
         {/* Search + Filters */}
@@ -132,10 +123,11 @@ const Events = () => {
               type="text"
               placeholder="Search events, tags, or venues…"
               className="w-full bg-transparent outline-none text-sm placeholder:text-white/50"
+              aria-label="Search events"
             />
           </div>
 
-          {/* Filter row */}
+          {/* Filters */}
           <div className="flex items-center gap-2">
             <div className="flex-1 h-12 rounded-xl border border-white/10 bg-white/5 px-3 flex items-center">
               <Filter className="h-4 w-4 text-white/60 mr-2" />
@@ -143,6 +135,7 @@ const Events = () => {
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-transparent outline-none text-sm text-white/85"
+                aria-label="Filter by category"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c} className="bg-[#0b0f1a]">
@@ -161,75 +154,141 @@ const Events = () => {
                     : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
                 }`}
               title="Show paid events only"
+              aria-pressed={paidOnly}
             >
               Paid only
             </button>
           </div>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="mt-10">
+            <Loader />
+          </div>
+        )}
+
         {/* Results */}
-        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {results.map((ev) => (
-            <article
-              key={ev.id}
-              onClick={goDetails(ev.id)}
-              className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden hover:bg-white/10 transition"
-            >
-              {/* Cover */}
-              <div className="h-32 bg-gradient-to-br from-[#0f1530] to-[#142146] grid place-items-center">
-                <span className="text-xs text-white/50">Event Cover</span>
-              </div>
+        {!loading && (
+          <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {results.map((ev) => {
+              const cover =
+                ev.bannerUrl || ev.banner?.secure_url || ev.cover || null;
+              const when = fmtDate(ev.start || ev.date);
+              const where = ev.venueName || ev.venue || ev.city || "—";
+              const price = Number(ev.price || 0);
+              const logo = ev.logoUrl || ev.logo?.secure_url || ev.logo || null;
 
-              {/* Body */}
-              <div className="p-4">
-                <h3 className="font-medium text-white/90">{ev.title}</h3>
-                <p className="mt-1 text-sm text-white/70 line-clamp-2">
-                  {ev.short}
-                </p>
+              return (
+                <article
+                  key={ev._id || ev.id}
+                  onClick={goDetails(ev._id || ev.id)}
+                  className="group cursor-pointer rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden hover:bg-white/10 transition"
+                >
+                  {/* Cover */}
+                  <div className="h-32 relative bg-gradient-to-br from-[#0f1530] to-[#142146]">
+                    {cover ? (
+                      <img
+                        src={cover}
+                        alt={ev.title}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="h-full w-full grid place-items-center">
+                        <span className="text-xs text-white/55">
+                          Event Cover
+                        </span>
+                      </div>
+                    )}
 
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-white/70">
-                  <div className="inline-flex items-center gap-1">
-                    <CalendarDays className="h-4 w-4" />
-                    {fmtDate(ev.date)}
+                    {/* tiny logo chip */}
+                    {logo && (
+                      <div className="absolute bottom-2 left-2 h-8 w-8 rounded-lg overflow-hidden border border-white/15 bg-black/30 backdrop-blur">
+                        <img
+                          src={logo}
+                          alt="logo"
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="inline-flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {ev.venue}
+
+                  {/* Body */}
+                  <div className="p-4">
+                    <h3 className="font-medium text-white/90 line-clamp-1">
+                      {ev.title}
+                    </h3>
+                    {ev.subtitle && (
+                      <p className="mt-0.5 text-xs text-white/60 line-clamp-1">
+                        {ev.subtitle}
+                      </p>
+                    )}
+                    <p className="mt-2 text-sm text-white/70 line-clamp-2">
+                      {ev.description || "Discover details and register now."}
+                    </p>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-white/70">
+                      <div className="inline-flex items-center gap-1">
+                        <CalendarDays className="h-4 w-4" />
+                        {when}
+                      </div>
+                      <div className="inline-flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        {where}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1 text-sm">
+                        <IndianRupee className="h-4 w-4" />
+                        {price > 0 ? price : "Free"}
+                      </span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full border border-white/10 bg-white/5">
+                        {ev.category || "Event"}
+                      </span>
+                    </div>
+
+                    {/* Tags */}
+                    {!!(ev.tags || []).length && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {(ev.tags || []).slice(0, 4).map((t) => (
+                          <span
+                            key={t}
+                            className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border border-white/10 bg-[#0b1020]/40"
+                          >
+                            <Tag className="h-3 w-3" />
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* CTA */}
+                    <div className="mt-4">
+                      <button
+                        onClick={goDetails(ev._id || ev.id)}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+                        aria-label={`View details for ${ev.title}`}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        View details
+                        <ArrowRight className="h-4 w-4 opacity-90" />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </article>
+              );
+            })}
 
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1 text-sm">
-                    <IndianRupee className="h-4 w-4" />
-                    {ev.price > 0 ? ev.price : "Free"}
-                  </span>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full border border-white/10 bg-white/5">
-                    {ev.category}
-                  </span>
-                </div>
-
-                {/* Tags */}
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {ev.tags.map((t) => (
-                    <span
-                      key={t}
-                      className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border border-white/10 bg-[#0b1020]/40"
-                    >
-                      <Tag className="h-3 w-3" />
-                      {t}
-                    </span>
-                  ))}
-                </div>
+            {!results.length && (
+              <div className="col-span-full rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
+                No events match your search. Try different filters.
               </div>
-            </article>
-          ))}
-
-          {results.length === 0 && (
-            <div className="col-span-full rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
-              No events match your search. Try different filters.
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
