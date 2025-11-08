@@ -11,6 +11,9 @@ import ForgotPassword from "./pages/ForgotPassword";
 import PublicRoute from "./components/PublicRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CreateEvent from "./pages/CreateEvent";
+import RegisterEvent from "./pages/RegisterEvent";
+import MyPasses from "./pages/MyPasses";
+import PassDetails from "./pages/PassDetails";
 
 const App = () => {
   return (
@@ -85,6 +88,31 @@ const App = () => {
           element={
             <ProtectedRoute>
               <CreateEvent />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/events/:id/register"
+          element={
+            <ProtectedRoute>
+              <RegisterEvent />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-passes"
+          element={
+            <ProtectedRoute>
+              <MyPasses />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-passes/:id"
+          element={
+            <ProtectedRoute>
+              <PassDetails />
             </ProtectedRoute>
           }
         />

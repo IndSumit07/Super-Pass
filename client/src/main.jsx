@@ -5,13 +5,16 @@ import App from "./App.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import { ToastProvider } from "./components/Toast.jsx";
 import { EventProvider } from "./contexts/EventContext.jsx";
+import { PassProvider } from "./contexts/PassContext.jsx";
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <ToastProvider>
       <AuthProvider>
         <EventProvider>
-          <App />
+          <PassProvider>
+            <App />
+          </PassProvider>
         </EventProvider>
       </AuthProvider>
     </ToastProvider>

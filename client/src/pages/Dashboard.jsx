@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   User2,
@@ -23,11 +23,17 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useEvents } from "../contexts/EventContext";
+import { usePasses } from "../contexts/PassContext"; // ✅ NEW: pulls purchased passes
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, logoutUser } = useAuth();
-  const { events, myEvents } = useEvents(); // 👈 use fetched events
+  const { events, myEvents } = useEvents(); // fetched events
+  const { passes, fetchMyPasses, loadingPasses } = usePasses(); // ✅ purchased passes
+  useEffect(() => {
+    fetchMyPasses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --------- Profile (safe) ---------
   const first =
@@ -55,13 +61,14 @@ const Dashboard = () => {
     tokensIssued: 0,
   };
 
-  // In case you later track participation separately, you can swap this:
+  // Hosted/Participated
   const eventsHosted = myEvents || [];
-  const eventsParticipated = []; // no API yet, keeping empty placeholder
+  const eventsParticipated = []; // placeholder
 
   // ✅ State
   const [tab, setTab] = useState("hosted");
   const [query, setQuery] = useState("");
+  const [passesQuery, setPassesQuery] = useState(""); // ✅ separate search for passes
 
   // Map API event -> row shape dashboard expects
   const normalizeHosted = (ev) => {
@@ -105,7 +112,6 @@ const Dashboard = () => {
     [eventsHosted]
   );
 
-  // If/when you have participant events, map them similarly
   const participatedRows = useMemo(() => {
     return (eventsParticipated || []).map((ev) => ({
       id: ev._id || ev.id,
@@ -362,6 +368,103 @@ const Dashboard = () => {
               View all events <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
+        </section>
+
+        {/* My Passes */}
+        <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <h3 className="text-base md:text-lg font-semibold text-white/90">
+              My Passes
+            </h3>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+              <div className="flex-1 min-w-[240px] rounded-xl border border-white/10 bg-[#0c1222]/60 h-11 px-3 flex items-center gap-2">
+                <Search className="h-4 w-4 text-white/60" />
+                <input
+                  value={passesQuery}
+                  onChange={(e) => setPassesQuery(e.target.value)}
+                  type="text"
+                  placeholder="Search passes…"
+                  className="w-full bg-transparent outline-none text-sm placeholder:text-white/50"
+                />
+              </div>
+            </div>
+          </div>
+
+          {loadingPasses ? (
+            <div className="py-10 text-sm text-white/60 text-center">
+              Loading your passes…
+            </div>
+          ) : passes?.length ? (
+            <div className="mt-4 divide-y divide-white/5">
+              {passes
+                .filter((p) =>
+                  `${p.eventSnapshot?.title || ""} ${
+                    p.eventSnapshot?.city || ""
+                  }`
+                    .toLowerCase()
+                    .includes(passesQuery.trim().toLowerCase())
+                )
+                .map((p) => (
+                  <div
+                    key={p._id}
+                    className="py-3 flex flex-col sm:flex-row sm:items-center gap-3"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">
+                          {p.eventSnapshot?.title || "Event"}
+                        </p>
+                        {p.eventSnapshot?.category && (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full border border-white/10 bg-white/5">
+                            {p.eventSnapshot.category}
+                          </span>
+                        )}
+                        <span className="text-[11px] px-2 py-0.5 rounded-full border border-sky-400/30 bg-sky-400/10 text-sky-200">
+                          {p.status || "Active"}
+                        </span>
+                      </div>
+
+                      <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/70">
+                        <span className="inline-flex items-center gap-1">
+                          <CalendarDays className="h-3.5 w-3.5" />
+                          {p.eventSnapshot?.start
+                            ? new Date(p.eventSnapshot.start).toLocaleString()
+                            : "—"}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {p.eventSnapshot?.city || "—"}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <IndianRupee className="h-3.5 w-3.5" />
+                          {Number(p.eventSnapshot?.price || 0) > 0
+                            ? p.eventSnapshot.price
+                            : "Free"}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Ticket className="h-3.5 w-3.5" />
+                          {p.quantity || 1}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/my-passes/${p._id}`}
+                        className="h-9 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-sm inline-flex items-center gap-1"
+                      >
+                        View Pass{" "}
+                        <ExternalLink className="h-4 w-4 opacity-70" />
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div className="py-10 text-sm text-white/60 text-center">
+              You haven’t purchased any passes yet.
+            </div>
+          )}
         </section>
 
         {/* Tasks & Activity */}
