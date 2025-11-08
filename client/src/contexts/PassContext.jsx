@@ -3,6 +3,7 @@ import React, { createContext, useContext, useMemo, useState } from "react";
 import axios from "axios";
 import { useToast } from "../components/Toast";
 import { useAuth } from "./AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const PassContext = createContext();
 
@@ -10,7 +11,7 @@ export const PassProvider = ({ children }) => {
   const toast = useToast();
   const { forceRefresh } = useAuth();
   const API_URL = import.meta.env.VITE_API_URL;
-
+  const navigate = useNavigate();
   const [passes, setPasses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [buying, setBuying] = useState(false);
@@ -97,6 +98,8 @@ export const PassProvider = ({ children }) => {
               title: "Payment successful",
               description: "Pass issued!",
             });
+            navigate("/dashboard");
+
             return verifyRes.data.data;
           } else {
             throw new Error(verifyRes?.data?.message || "Verification failed");
