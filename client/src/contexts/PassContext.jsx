@@ -94,11 +94,11 @@ export const PassProvider = ({ children }) => {
             razorpay_signature: response.razorpay_signature,
           });
           if (verifyRes?.data?.success) {
+            navigate("/dashboard");
             toast.success({
               title: "Payment successful",
               description: "Pass issued!",
             });
-            navigate("/dashboard");
 
             return verifyRes.data.data;
           } else {
