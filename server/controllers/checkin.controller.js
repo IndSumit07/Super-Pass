@@ -1,91 +1,146 @@
-// controllers/checkin.controller.js
+import Event from "../models/event.model.js";
 import Pass from "../models/pass.model.js";
+import Checkin from "../models/checkin.model.js";
 import { verifyQR } from "../utils/qrSigner.js";
 
+// Ensure user is event owner
+async function assertOwner(eventId, userId) {
+  const ev = await Event.findById(eventId).select("_id createdBy").lean();
+  if (!ev) return { ok: false, status: 404, message: "Event not found" };
+  if (String(ev.createdBy) !== String(userId)) {
+    return {
+      ok: false,
+      status: 403,
+      message: "Only organizer can scan/check-ins",
+    };
+  }
+  return { ok: true, ev };
+}
+
+// POST /api/checkin/:eventId/scan
 export const scanPass = async (req, res) => {
   try {
     const { eventId } = req.params;
     const { code, notes } = req.body;
+    const userId = req.user?._id;
 
-    if (!code)
+    const owner = await assertOwner(eventId, userId);
+    if (!owner.ok)
       return res
-        .status(422)
-        .json({ success: false, message: "QR code text required" });
+        .status(owner.status)
+        .json({ success: false, message: owner.message });
 
-    const vr = verifyQR(code);
-    if (!vr.ok)
-      return res.status(400).json({ success: false, message: "Invalid QR" });
+    const { valid, passId, reason } = verifyQR(code);
+    if (!valid) {
+      await Checkin.create({
+        event: eventId,
+        pass: null,
+        user: null,
+        scannedBy: userId,
+        notes: `Invalid QR: ${reason || "unknown"}`,
+        success: false,
+      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid QR code." });
+    }
 
-    // Only allow scanning passes for THIS event, and that are paid
-    const pass = await Pass.findOne({
-      _id: vr.passId,
-      event: eventId,
-      status: "paid",
-    })
-      .populate("user", "fullname firstName lastName name email")
-      .populate("event", "title city start end createdBy")
+    const pass = await Pass.findById(passId)
+      .populate("user", "fullname firstName lastName email")
       .lean();
-
     if (!pass) {
+      await Checkin.create({
+        event: eventId,
+        pass: passId,
+        user: null,
+        scannedBy: userId,
+        notes: "Pass not found",
+        success: false,
+      });
       return res
         .status(404)
-        .json({
-          success: false,
-          message: "Pass not found for this event or not paid",
-        });
+        .json({ success: false, message: "Pass not found." });
     }
 
-    // If already checked in, we still return success but flag it
-    const already = !!pass.checkedIn;
-
-    // Optional audit fields if you added them in the model
-    const update = {
-      checkedIn: true,
-    };
-    if (!already) {
-      update.checkedInAt = new Date();
-      update.checkedInBy = req.user?._id;
+    if (String(pass.event) !== String(eventId)) {
+      await Checkin.create({
+        event: eventId,
+        pass: pass._id,
+        user: pass.user,
+        scannedBy: userId,
+        notes: "Pass belongs to different event",
+        success: false,
+      });
+      return res.status(400).json({
+        success: false,
+        message: "Pass belongs to a different event.",
+      });
     }
 
-    const updated = await Pass.findByIdAndUpdate(
-      pass._id,
-      { $set: update },
-      { new: true }
-    )
-      .populate("user", "fullname firstName lastName name email")
-      .populate("event", "title city start end");
+    // Mark checkedIn on pass (idempotent)
+    await Pass.findByIdAndUpdate(pass._id, { $set: { checkedIn: true } });
+
+    const name =
+      pass.user?.fullname?.firstname && pass.user?.fullname?.lastname
+        ? `${pass.user.fullname.firstname} ${pass.user.fullname.lastname}`
+        : pass.user?.firstName || pass.user?.lastName
+        ? `${pass.user.firstName || ""} ${pass.user.lastName || ""}`.trim()
+        : "Guest";
+
+    const check = await Checkin.create({
+      event: eventId,
+      pass: pass._id,
+      user: pass.user?._id,
+      scannedBy: userId,
+      notes: notes || "",
+      success: true,
+      userSnapshot: { name, email: pass.user?.email || "" },
+    });
 
     return res.json({
       success: true,
-      data: updated,
-      alreadyChecked: already,
-      message: already ? "Already checked in earlier" : "Checked in",
+      data: {
+        passId: pass._id,
+        user: check.userSnapshot,
+        checkedIn: true,
+        checkinId: check._id,
+        at: check.createdAt,
+      },
     });
-  } catch (e) {
-    return res.status(400).json({ success: false, message: e.message });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
   }
 };
 
-export const getEventCheckins = async (req, res) => {
+// GET /api/checkin/:eventId
+export const listCheckins = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { q } = req.query;
+    const userId = req.user?._id;
 
-    const filter = { event: eventId, checkedIn: true, status: "paid" };
-    if (q) {
-      // light filter on populated user fields via regex – for large data sets use Atlas Search/Text index
-      // This works only if user fields are stored/denormalized; safer way:
-      // fetch all and filter in-memory, or perform two-step search
-    }
+    const owner = await assertOwner(eventId, userId);
+    if (!owner.ok)
+      return res
+        .status(owner.status)
+        .json({ success: false, message: owner.message });
 
-    const rows = await Pass.find(filter)
-      .populate("user", "fullname firstName lastName name email")
-      .populate("event", "title city start end")
-      .sort("-checkedInAt")
+    const rows = await Checkin.find({ event: eventId })
+      .sort("-createdAt")
       .lean();
 
-    res.json({ success: true, data: rows });
-  } catch (e) {
-    res.status(400).json({ success: false, message: e.message });
+    res.json({
+      success: true,
+      data: rows.map((r) => ({
+        _id: r._id,
+        success: r.success,
+        notes: r.notes,
+        at: r.createdAt,
+        pass: r.pass,
+        user: r.user,
+        userSnapshot: r.userSnapshot,
+      })),
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
 };

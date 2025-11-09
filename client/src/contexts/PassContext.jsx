@@ -176,16 +176,23 @@ export const PassProvider = ({ children }) => {
     }
   };
 
-  // PassContext.jsx (merge in)
   const scanPass = async ({ eventId, code, notes }) => {
     try {
       const { data } = await api.post(`/checkin/${eventId}/scan`, {
         code,
         notes,
       });
-      return data?.success ? data : null;
+      if (!data?.success) throw new Error(data?.message || "Scan failed");
+      toast.success({
+        title: "Checked-in",
+        description: data?.data?.user?.name || "Success",
+      });
+      return data;
     } catch (e) {
-      // toast error
+      toast.error({
+        title: "Scan failed",
+        description: e?.message || "Invalid or mismatched pass.",
+      });
       return null;
     }
   };
@@ -193,8 +200,10 @@ export const PassProvider = ({ children }) => {
   const fetchCheckins = async (eventId) => {
     try {
       const { data } = await api.get(`/checkin/${eventId}`);
-      return data?.success ? data.data : [];
+      if (!data?.success) throw new Error(data?.message || "Failed to load");
+      return data.data || [];
     } catch (e) {
+      toast.error({ title: "Load failed", description: e?.message || "" });
       return [];
     }
   };
