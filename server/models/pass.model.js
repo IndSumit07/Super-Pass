@@ -16,7 +16,6 @@ const PassSchema = new mongoose.Schema(
       index: true,
     },
 
-    // snapshot at purchase time to keep visual consistency
     eventSnapshot: {
       title: String,
       organization: String,
@@ -26,10 +25,9 @@ const PassSchema = new mongoose.Schema(
       price: Number,
       logoUrl: String,
       bannerUrl: String,
-      ticketTemplate: Object, // same shape as event.ticketTemplate
+      ticketTemplate: Object,
     },
 
-    // payment fields
     amount: { type: Number, required: true }, // in paise
     currency: { type: String, default: "INR" },
     status: {
@@ -39,16 +37,19 @@ const PassSchema = new mongoose.Schema(
       index: true,
     },
 
-    // razorpay refs
     razorpay_order_id: String,
     razorpay_payment_id: String,
     razorpay_signature: String,
 
-    // QR payload (what scanners will read)
+    // what’s encoded into the QR
     qrPayload: { type: String, index: true },
 
-    // simple “admission status” toggle for on-ground scanning flows
+    // on-ground scanning
     checkedIn: { type: Boolean, default: false },
+
+    // NEW (optional, for better UI/audit)
+    checkedInAt: { type: Date },
+    checkedInBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );

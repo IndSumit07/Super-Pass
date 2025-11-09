@@ -176,6 +176,29 @@ export const PassProvider = ({ children }) => {
     }
   };
 
+  // PassContext.jsx (merge in)
+  const scanPass = async ({ eventId, code, notes }) => {
+    try {
+      const { data } = await api.post(`/checkin/${eventId}/scan`, {
+        code,
+        notes,
+      });
+      return data?.success ? data : null;
+    } catch (e) {
+      // toast error
+      return null;
+    }
+  };
+
+  const fetchCheckins = async (eventId) => {
+    try {
+      const { data } = await api.get(`/checkin/${eventId}`);
+      return data?.success ? data.data : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
   return (
     <PassContext.Provider
       value={{
@@ -185,6 +208,8 @@ export const PassProvider = ({ children }) => {
         buyTicket,
         fetchMyPasses,
         fetchPassById,
+        scanPass,
+        fetchCheckins,
       }}
     >
       {children}

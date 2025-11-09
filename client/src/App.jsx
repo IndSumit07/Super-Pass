@@ -14,6 +14,8 @@ import CreateEvent from "./pages/CreateEvent";
 import RegisterEvent from "./pages/RegisterEvent";
 import MyPasses from "./pages/MyPasses";
 import PassDetails from "./pages/PassDetails";
+import ScanPage from "./pages/Scan";
+import EventCheckins from "./pages/EventCheckins";
 
 const App = () => {
   return (
@@ -113,6 +115,22 @@ const App = () => {
           element={
             <ProtectedRoute>
               <PassDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scan"
+          element={
+            <ProtectedRoute>
+              <ScanPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events/:eventId/checkins"
+          element={
+            <ProtectedRoute>
+              <EventCheckins />
             </ProtectedRoute>
           }
         />

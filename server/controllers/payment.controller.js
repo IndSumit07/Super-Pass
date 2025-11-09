@@ -1,8 +1,8 @@
-// controllers/payment.controller.js
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import Event from "../models/event.model.js";
 import Pass from "../models/pass.model.js";
+import { signQR } from "../utils/qrSigner.js";
 
 const RZP_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RZP_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -12,20 +12,23 @@ const razorpay = new Razorpay({
   key_secret: RZP_KEY_SECRET,
 });
 
-// helper to build a <=40 char receipt safely
+// helper to build safe receipts (Razorpay <= 40 chars)
 function shortReceipt(eventId) {
   const eid = String(eventId)
     .replace(/[^a-zA-Z0-9]/g, "")
-    .slice(-12); // last 12 chars
-  const ts = Date.now().toString().slice(-10); // last 10 digits
-  // "evt-"(4) + 12 + "-"(1) + 10 = 27 chars total
-  return `evt-${eid}-${ts}`;
+    .slice(-12);
+  const ts = Date.now().toString().slice(-10);
+  return `evt-${eid}-${ts}`; // total ~27 chars
 }
 
-// POST /api/payments/order
+/* -------------------------------------------------------------------------- */
+/* 🧾 Create Razorpay Order (or direct pass for free events) */
+/* -------------------------------------------------------------------------- */
 export const createOrder = async (req, res) => {
   try {
     const { eventId, quantity = 1 } = req.body;
+    const userId = req.user?._id;
+
     if (!eventId)
       return res
         .status(400)
@@ -36,20 +39,18 @@ export const createOrder = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Event not found." });
-    if (event.status !== "published") {
+    if (event.status !== "published")
       return res
         .status(400)
         .json({ success: false, message: "Event is not published." });
-    }
 
     const basePrice = Number(event.price || 0);
     const isPaid = !!event.isPaid && basePrice > 0;
     const qty = Math.max(1, Number(quantity || 1));
-    const amountPaise = (isPaid ? basePrice : 0) * 100 * qty;
+    const amountPaise = basePrice * 100 * qty;
 
-    // If free event (or amount < 100 paise), skip Razorpay and directly issue pass
+    /* ---------- 🆓 Free Event: Direct Pass Creation ---------- */
     if (!isPaid || amountPaise < 100) {
-      const userId = req.user?._id;
       const pass = await Pass.create({
         user: userId,
         event: event._id,
@@ -67,8 +68,11 @@ export const createOrder = async (req, res) => {
         amount: 0,
         currency: "INR",
         status: "paid",
-        qrPayload: `spass:${event._id}:${userId}:${Date.now()}`,
       });
+
+      // ✅ sign QR securely
+      const qr = signQR(pass._id.toString());
+      await Pass.findByIdAndUpdate(pass._id, { $set: { qrPayload: qr } });
 
       return res.json({
         success: true,
@@ -78,25 +82,28 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    /* ---------- 💳 Paid Event: Razorpay Order Creation ---------- */
     const order = await razorpay.orders.create({
-      amount: amountPaise, // >= 100 for Razorpay
+      amount: amountPaise,
       currency: "INR",
       notes: { eventId, quantity: String(qty) },
-      receipt: shortReceipt(event._id), // <= 40 chars
+      receipt: shortReceipt(event._id),
     });
 
     return res.json({ success: true, data: order, publicKey: RZP_KEY_ID });
   } catch (err) {
-    // surface a compact error message back to the client
     const msg =
       err?.error?.description ||
       err?.message ||
       "Failed to create Razorpay order.";
+    console.error("💥 createOrder error:", msg);
     return res.status(400).json({ success: false, message: msg });
   }
 };
 
-// POST /api/payments/verify
+/* -------------------------------------------------------------------------- */
+/* 💰 Verify Razorpay Payment and Issue Pass */
+/* -------------------------------------------------------------------------- */
 export const verifyPayment = async (req, res) => {
   try {
     const userId = req.user?._id;
@@ -107,6 +114,8 @@ export const verifyPayment = async (req, res) => {
       razorpay_order_id,
       razorpay_signature,
     } = req.body;
+
+    // validate fields
     if (
       !eventId ||
       !orderId ||
@@ -119,6 +128,7 @@ export const verifyPayment = async (req, res) => {
         .json({ success: false, message: "Missing payment fields." });
     }
 
+    // verify signature
     const generatedSignature = crypto
       .createHmac("sha256", RZP_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -127,7 +137,7 @@ export const verifyPayment = async (req, res) => {
     if (generatedSignature !== razorpay_signature) {
       return res
         .status(400)
-        .json({ success: false, message: "Invalid signature." });
+        .json({ success: false, message: "Invalid payment signature." });
     }
 
     const event = await Event.findById(eventId).lean();
@@ -139,6 +149,7 @@ export const verifyPayment = async (req, res) => {
     const price = Number(event.price || 0);
     const amountPaise = !!event.isPaid && price > 0 ? price * 100 : 0;
 
+    // ✅ Create pass record
     const pass = await Pass.create({
       user: userId,
       event: event._id,
@@ -159,12 +170,16 @@ export const verifyPayment = async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      qrPayload: `spass:${event._id}:${userId}:${Date.now()}`,
     });
+
+    // ✅ attach signed QR code
+    const qr = signQR(pass._id.toString());
+    await Pass.findByIdAndUpdate(pass._id, { $set: { qrPayload: qr } });
 
     return res.json({ success: true, data: pass });
   } catch (err) {
     const msg = err?.message || "Payment verification failed.";
+    console.error("💥 verifyPayment error:", msg);
     return res.status(400).json({ success: false, message: msg });
   }
 };
