@@ -571,7 +571,7 @@ const HostedRow = ({ ev, onOpen }) => (
     </div>
     <div className="flex items-center gap-2">
       <Link
-        to={`/scan?eventId=${ev._id || ev.id}`}
+        to={`/events/${ev._id || ev.id}/scan`}
         className="h-9 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm inline-flex items-center gap-1"
       >
         Scan

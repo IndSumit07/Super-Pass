@@ -484,7 +484,7 @@ function EventDetails() {
                 Register Now
               </Link>
               <Link
-                to={`/events/${ev._id || ev.id}/tickets`}
+                to={`/events/${ev._id || ev.id}/checkins`}
                 className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
               >
                 View Tickets

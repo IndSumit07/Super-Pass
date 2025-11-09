@@ -207,6 +207,24 @@ export const PassProvider = ({ children }) => {
       return [];
     }
   };
+  // add below fetchCheckins
+  const fetchParticipants = async (eventId) => {
+    try {
+      if (!eventId) throw new Error("Missing eventId");
+      const { data } = await api.get(`/checkin/${eventId}/participants`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+      return data?.success ? data.data : [];
+    } catch (e) {
+      toast.error({
+        title: "Failed to load participants",
+        description: e?.message || "",
+      });
+      return [];
+    }
+  };
 
   return (
     <PassContext.Provider
@@ -219,6 +237,7 @@ export const PassProvider = ({ children }) => {
         fetchPassById,
         scanPass,
         fetchCheckins,
+        fetchParticipants,
       }}
     >
       {children}

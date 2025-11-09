@@ -111,6 +111,53 @@ export const scanPass = async (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
+export const listParticipants = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.user?._id;
+
+    const event = await Event.findById(eventId).lean();
+    if (!event) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
+    }
+    const ownerId =
+      (typeof event.createdBy === "object" && event.createdBy?._id) ||
+      event.createdBy?.toString?.() ||
+      event.createdBy;
+
+    if (!ownerId || String(ownerId) !== String(userId)) {
+      return res.status(403).json({ success: false, message: "Not allowed" });
+    }
+
+    const passes = await Pass.find({ event: eventId })
+      .populate("user", "email phone fullname firstname lastname")
+      .sort("-createdAt")
+      .lean();
+
+    // Normalize a stable shape
+    const out = passes.map((p) => ({
+      _id: p._id,
+      checkedIn: !!p.checkedIn,
+      createdAt: p.createdAt,
+      userSnapshot: {
+        name:
+          p.userSnapshot?.name ||
+          [p.user?.fullname?.firstname, p.user?.fullname?.lastname]
+            .filter(Boolean)
+            .join(" "),
+        email: p.userSnapshot?.email || p.user?.email || "",
+        phone: p.userSnapshot?.phone || p.user?.phone || "",
+      },
+      eventSnapshot: p.eventSnapshot || {},
+    }));
+
+    res.json({ success: true, data: out });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
 
 // GET /api/checkin/:eventId
 export const listCheckins = async (req, res) => {
