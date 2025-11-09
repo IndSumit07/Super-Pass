@@ -1,163 +1,248 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { QrCode, CheckCircle2, XCircle, Camera, Keyboard } from "lucide-react";
+// src/pages/EventScan.jsx (or Scan.jsx)
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { Html5QrcodeScanner, Html5Qrcode } from "html5-qrcode";
+import {
+  ChevronLeft,
+  QrCode,
+  Camera,
+  CameraOff,
+  RefreshCw,
+  ScanLine,
+} from "lucide-react";
 import { usePasses } from "../contexts/PassContext";
-import { useEvents } from "../contexts/EventContext";
-import Loader from "../components/Loader";
+import { useToast } from "../components/Toast";
 
-export default function ScanPass() {
+const SCANNER_ID = "sp-qr-reader";
+
+export default function EventScan() {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const { scanPass, fetchCheckins } = usePasses();
-  const { fetchEventById, singleEvent, loading: eventLoading } = useEvents();
+  const { scanPass } = usePasses();
+  const toast = useToast();
 
-  const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [checks, setChecks] = useState([]);
-  const [mode, setMode] = useState("manual"); // manual | camera (placeholder)
+  const [active, setActive] = useState(true);
+  const [lastCode, setLastCode] = useState("");
+  const [status, setStatus] = useState("Point the camera at a QR…");
 
-  useEffect(() => {
-    fetchEventById(eventId);
-    (async () => {
-      const rows = await fetchCheckins(eventId);
-      setChecks(rows);
-    })();
-    // eslint-disable-next-line
-  }, [eventId]);
+  // refs to the scanner instances
+  const scannerRef = useRef(null);
+  const html5Ref = useRef(null);
 
-  const onScan = async () => {
-    if (!value.trim() || busy) return;
-    setBusy(true);
-    const res = await scanPass({ eventId, code: value.trim() });
-    if (res?.success) {
-      setChecks((p) => [
-        {
-          _id: res.data.checkinId,
-          success: true,
-          userSnapshot: res.data.user,
-          at: res.data.at,
-          notes: "",
-        },
-        ...p,
-      ]);
-      setValue("");
+  const stopScanner = useCallback(async () => {
+    try {
+      setActive(false);
+      if (scannerRef.current) {
+        await scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+      if (html5Ref.current) {
+        if (html5Ref.current.isScanning) {
+          await html5Ref.current.stop();
+        }
+        await html5Ref.current.clear();
+        html5Ref.current = null;
+      }
+    } catch {
+      /* noop */
     }
-    setBusy(false);
-  };
+  }, []);
 
-  if (eventLoading) return <Loader />;
+  const handleDecoded = useCallback(
+    async (decodedText) => {
+      if (!decodedText || decodedText === lastCode) return;
+
+      setLastCode(decodedText);
+      setStatus("Validating…");
+      await stopScanner(); // prevent double fires
+
+      const res = await scanPass({
+        eventId,
+        code: decodedText,
+        notes: "scanned@camera",
+      });
+
+      if (res?.success) {
+        toast.success({
+          title: "Checked-in",
+          description:
+            res?.message ||
+            `Pass verified for ${res?.data?.userSnapshot?.name || "user"}.`,
+        });
+      } else {
+        toast.error({
+          title: "Invalid / already used",
+          description: res?.message || "Could not verify this pass.",
+        });
+      }
+
+      setStatus("Scan complete.");
+      setTimeout(() => {
+        setLastCode("");
+        setStatus("Point the camera at a QR…");
+        startScanner(); // restart for next scan
+      }, 900);
+    },
+    [eventId, lastCode, scanPass, stopScanner, toast]
+  );
+
+  const startScanner = useCallback(async () => {
+    setActive(true);
+    setStatus("Starting camera…");
+
+    // Try the convenience UI scanner
+    try {
+      const s = new Html5QrcodeScanner(SCANNER_ID, {
+        fps: 10,
+        qrbox: (vw, vh) => {
+          const size = Math.min(vw, vh) * 0.6;
+          return { width: size, height: size };
+        },
+        rememberLastUsedCamera: true,
+        showTorchButtonIfSupported: true,
+        showZoomSliderIfSupported: true,
+        aspectRatio: 1.777,
+      });
+
+      scannerRef.current = s;
+
+      s.render(
+        (decodedText /*, decodedResult*/) => {
+          // delegate to handler (no await in this callback)
+          handleDecoded(decodedText);
+        },
+        () => setStatus("Camera active. Scanning…")
+      );
+
+      setStatus("Camera active. Scanning…");
+      return;
+    } catch {
+      // Fallback to manual API
+      try {
+        const h = new Html5Qrcode(SCANNER_ID);
+        html5Ref.current = h;
+        const devices = await Html5Qrcode.getCameras();
+        const camId = devices?.[0]?.id || { facingMode: "environment" };
+
+        await h.start(
+          camId,
+          { fps: 10, qrbox: 260 },
+          (decodedText) => handleDecoded(decodedText),
+          () => setStatus("Camera active. Scanning…")
+        );
+
+        setStatus("Camera active. Scanning…");
+      } catch (err2) {
+        console.error(err2);
+        setStatus(
+          "Camera failed to start. Check permissions or try another browser."
+        );
+        setActive(false);
+      }
+    }
+  }, [handleDecoded]);
+
+  // mount / unmount lifecycle
+  useEffect(() => {
+    startScanner();
+    return () => {
+      stopScanner();
+      const el = document.getElementById(SCANNER_ID);
+      if (el) el.innerHTML = "";
+    };
+    // We intentionally depend only on eventId to restart per-event.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
 
   return (
     <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
       <div className="fixed inset-0 bg-gradient-to-b from-[#0b0f1a] via-[#080b14] to-[#05070d]" />
-
       <div className="relative z-10 mx-auto w-[92%] max-w-[900px] py-6 md:py-10">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <button
-            onClick={() => navigate(-1)}
-            className="text-sm text-white/80 hover:text-white transition"
+            onClick={() => navigate(`/events/${eventId}`)}
+            className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white transition"
           >
-            ← Back
+            <ChevronLeft className="h-4 w-4" />
+            Back
           </button>
-          <h1 className="text-xl md:text-2xl font-semibold">
-            <span className="font-forum text-[#19cfbc]">Scan Passes</span>{" "}
-            <span className="text-white/80">— {singleEvent?.title}</span>
+
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">
+            <span className="font-forum text-[#19cfbc]">QR Scanner</span>
           </h1>
-          <div />
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => (active ? stopScanner() : startScanner())}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 h-10 text-sm hover:bg-white/10 transition"
+            >
+              {active ? (
+                <>
+                  <CameraOff className="h-4 w-4" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Camera className="h-4 w-4" />
+                  Resume
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                stopScanner().then(startScanner);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 h-10 text-sm hover:bg-white/10 transition"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Restart
+            </button>
+          </div>
         </div>
 
-        <div className="mt-6 grid md:grid-cols-2 gap-4">
+        {/* Scanner */}
+        <div className="mt-6 grid gap-4 md:grid-cols-[1fr_300px]">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white/90">Scanner</h3>
-              <div className="inline-flex rounded-lg border border-white/10 overflow-hidden">
-                <button
-                  className={`px-3 h-9 text-sm ${
-                    mode === "manual"
-                      ? "bg-white/10"
-                      : "bg-white/5 hover:bg-white/10"
-                  }`}
-                  onClick={() => setMode("manual")}
-                >
-                  <Keyboard className="h-4 w-4 inline-block mr-1" /> Manual
-                </button>
-                <button
-                  className={`px-3 h-9 text-sm ${
-                    mode === "camera"
-                      ? "bg-white/10"
-                      : "bg-white/5 hover:bg-white/10"
-                  }`}
-                  onClick={() => setMode("camera")}
-                  title="Camera mode placeholder (bring your own reader or add react-qr-reader)"
-                >
-                  <Camera className="h-4 w-4 inline-block mr-1" /> Camera
-                </button>
-              </div>
+            <div className="rounded-xl overflow-hidden border border-white/10 bg-[#0b1020]/40 aspect-video grid place-items-center">
+              <div id={SCANNER_ID} className="w-full h-full" />
             </div>
 
-            {mode === "manual" ? (
-              <div className="mt-3">
-                <div className="h-11 px-3 rounded-xl border border-white/10 bg-[#0c1222]/60 flex items-center">
-                  <input
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    placeholder="Paste QR payload or Pass ID"
-                    className="w-full bg-transparent outline-none text-sm"
-                  />
-                </div>
-                <button
-                  onClick={onScan}
-                  disabled={busy || !value.trim()}
-                  className={`mt-3 h-10 px-4 rounded-xl text-sm ${
-                    busy || !value.trim()
-                      ? "bg-white/10 cursor-not-allowed"
-                      : "bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500"
-                  }`}
-                >
-                  {busy ? "Scanning…" : "Scan"}
-                </button>
-              </div>
-            ) : (
-              <div className="mt-3 rounded-xl border border-white/10 bg-[#0b1020]/40 p-4 text-sm text-white/70">
-                Camera mode placeholder. Install <code>react-qr-reader</code> or{" "}
-                <code>html5-qrcode</code> to enable webcam scanning and call{" "}
-                <code>onScan</code> with the detected code.
-              </div>
-            )}
+            <div className="mt-3 text-xs text-white/70 inline-flex items-center gap-2">
+              <ScanLine className="h-4 w-4" />
+              <span>{status}</span>
+            </div>
+
+            <div className="mt-2 text-[11px] text-white/50">
+              Tip: Allow camera permission. On iOS Safari, use HTTPS or
+              localhost.
+            </div>
           </div>
 
+          {/* Side panel */}
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <h3 className="text-sm font-semibold text-white/90">
-              Recent Check-ins
-            </h3>
-            <div className="mt-2 space-y-2 max-h-[420px] overflow-auto pr-1">
-              {checks.map((c) => (
-                <div
-                  key={c._id}
-                  className="rounded-xl border border-white/10 bg-[#0b1020]/40 p-3 text-sm flex items-center gap-3"
-                >
-                  {c.success ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-rose-300" />
-                  )}
-                  <div className="flex-1">
-                    <div className="font-medium text-white/90">
-                      {c.userSnapshot?.name || "Guest"}
-                      <span className="ml-2 text-white/60 text-xs">
-                        {c.userSnapshot?.email}
-                      </span>
-                    </div>
-                    <div className="text-white/60 text-xs">
-                      {new Date(c.at).toLocaleString()}{" "}
-                      {c.notes ? `• ${c.notes}` : ""}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {checks.length === 0 && (
-                <div className="text-white/60 text-sm">No scans yet.</div>
+            <h3 className="text-sm font-semibold text-white/90">Recent</h3>
+            <div className="mt-2 text-xs text-white/70 break-words">
+              {lastCode ? (
+                <>
+                  <div className="text-white/80">Last code:</div>
+                  <pre className="mt-1 p-2 rounded-lg bg-[#0b1020]/50 border border-white/10 whitespace-pre-wrap break-all">
+                    {lastCode}
+                  </pre>
+                </>
+              ) : (
+                <div className="text-white/60">No code scanned yet.</div>
               )}
+            </div>
+
+            <div className="mt-4">
+              <Link
+                to={`/events/${eventId}/checkins`}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 h-10 text-sm hover:bg-white/10 transition"
+              >
+                <QrCode className="h-4 w-4" />
+                View Check-ins
+              </Link>
             </div>
           </div>
         </div>
