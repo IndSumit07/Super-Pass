@@ -67,7 +67,7 @@ export const PassProvider = ({ children }) => {
       if (data?.mode === "direct" && data?.data?._id) {
         toast.success({
           title: "Pass issued",
-          description: "Free event pass created.",
+          description: "You have been registered successfully.",
         });
         return data.data;
       }
