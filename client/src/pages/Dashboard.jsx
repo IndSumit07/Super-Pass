@@ -20,6 +20,8 @@ import {
   Tag,
   Plus,
   LogOut,
+  House,
+  ExternalLinkIcon,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useEvents } from "../contexts/EventContext";
@@ -182,32 +184,33 @@ const Dashboard = () => {
               <span className="h-3 w-3 rounded bg-emerald-500" />
               <span className="ml-1 h-[10px] w-[10px] rounded-sm border border-white/20" />
             </div>
-            <h1 className="text-xl md:text-2xl font-semibold tracking-tight">
+            <Link
+              to="/home"
+              className="text-xl md:text-2xl font-semibold tracking-tight"
+            >
               <span className="font-forum text-[#19cfbc]">SuperPass</span>{" "}
               <span className="text-white/80">Dashboard</span>
-            </h1>
+            </Link>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate("/events/create")}
+              onClick={() => navigate("/home")}
               className="hidden md:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
             >
-              <Plus className="h-4 w-4" />
-              Create Event
+              <House className="h-4 w-4" />
+              Home
             </button>
+
             <button
-              onClick={() => navigate("/settings")}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 h-10 text-sm hover:bg-white/10 transition"
+              onClick={() => {
+                logoutUser();
+              }}
+              className="hidden md:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-red-600 px-4 h-10 text-sm hover:from-red-500 hover:to-red-500 transition"
             >
-              <Settings className="h-4 w-4" />
-              Settings
+              {/* <ExternalLinkIcon className="h-4 w-4" /> */}
+              Logout
             </button>
-            <div className="h-10 w-10 rounded-full bg-white/10 border border-white/10 grid place-items-center">
-              <span className="text-xs text-white/80">
-                {profile.avatarText}
-              </span>
-            </div>
           </div>
         </header>
 
@@ -467,49 +470,6 @@ const Dashboard = () => {
           )}
         </section>
 
-        {/* Tasks & Activity */}
-        <section className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <h3 className="text-base md:text-lg font-semibold text-white/90">
-              Upcoming Tasks
-            </h3>
-            <ul className="mt-3 space-y-3">
-              <Task title="Publish your next event" due="Soon" badge="Draft" />
-              <Task
-                title="Invite speakers & sponsors"
-                due="This week"
-                badge="Planning"
-              />
-              <Task
-                title="Finalize volunteer roles"
-                due="Next week"
-                badge="Ops"
-              />
-            </ul>
-            <div className="mt-3">
-              <Link
-                to="/tasks"
-                className="inline-flex items-center gap-1 text-sm text-white/85 hover:text-white transition"
-              >
-                Open tasks <ExternalLink className="h-4 w-4 opacity-70" />
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <h3 className="text-base md:text-lg font-semibold text-white/90">
-              Recent Activity
-            </h3>
-            <ul className="mt-3 space-y-3 text-sm text-white/75">
-              <li className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5" />
-                You created your account
-                <span className="ml-auto text-xs text-white/50">Welcome!</span>
-              </li>
-            </ul>
-          </div>
-        </section>
-
         {/* Bottom CTA */}
         <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -538,44 +498,6 @@ const Dashboard = () => {
         </section>
       </div>
 
-      {/* --- Sticky bottom action bar (Settings + Logout) --- */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-[1200px]">
-        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,.35)] p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="relative h-9 w-9 rounded-full">
-                <span className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-[#19cfbc]/25 to-blue-500/20 opacity-60" />
-                <span className="relative h-9 w-9 rounded-full bg-[#0b1020]/70 border border-white/10 backdrop-blur-sm grid place-items-center text-sm">
-                  {profile.avatarText}
-                </span>
-              </div>
-              <div className="text-xs">
-                <p className="text-white/90 font-medium leading-4">
-                  {profile.name}
-                </p>
-                <p className="text-white/60 leading-4">{profile.email}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate("/settings")}
-                className="h-10 px-3 rounded-xl border border-white/10 bg-white/5 text-sm inline-flex items-center gap-2 hover:bg-white/10 transition"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </button>
-              <button
-                onClick={logoutUser}
-                className="h-10 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-sm inline-flex items-center gap-2 transition"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
       {/* --- /bottom bar --- */}
     </div>
   );

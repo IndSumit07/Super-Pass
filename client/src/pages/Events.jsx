@@ -113,12 +113,20 @@ const Events = () => {
             <span className="font-forum text-[#19cfbc]">SuperPaas</span>{" "}
             <span className="text-white/80">Events</span>
           </h1>
-          <Link
-            to="/events/create"
-            className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
-          >
-            Create Event
-          </Link>
+          <div className="flex justify-center items-center gap-2">
+            <Link
+              to="/home"
+              className="h-10 px-3 rounded-xl border text-sm border-white/10 bg-white/5 text-white/80 hover:bg-white/10 flex justify-center items-center"
+            >
+              Home
+            </Link>
+            <Link
+              to="/events/create"
+              className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+            >
+              Create Event
+            </Link>
+          </div>
         </div>
 
         {/* Search + Filters */}

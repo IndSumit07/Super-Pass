@@ -23,14 +23,12 @@ const Home = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const goTo = (path) => () => navigate(path);
-
-  // Safely compute first initial
-  const firstInitial = (
-    user?.fullname.firstname?.trim?.()[0] ||
-    user?.name?.trim?.()[0] ||
-    user?.email?.trim?.()[0] ||
-    "U"
-  ).toUpperCase();
+  const first =
+    user?.fullname?.firstname || user?.firstName || user?.name || "";
+  const last = user?.fullname?.lastname || user?.lastName || "";
+  const avatarText =
+    `${first?.[0] || ""}${last?.[0] || ""}`.toUpperCase() ||
+    (user?.email?.[0] || "U").toUpperCase();
 
   return (
     <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
@@ -74,11 +72,8 @@ const Home = () => {
               <Link to="/events" className="hover:text-white transition">
                 Events
               </Link>
-              <Link to="/about" className="hover:text-white transition">
-                About
-              </Link>
-              <Link to="/help" className="hover:text-white transition">
-                Help
+              <Link to="/my-passes" className="hover:text-white transition">
+                Passes
               </Link>
             </nav>
 
@@ -106,7 +101,7 @@ const Home = () => {
                 <span className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-[#19cfbc]/25 to-blue-500/20 opacity-60" />
                 <span className="relative h-9 w-9 rounded-full bg-[#0b1020]/70 border border-white/10 backdrop-blur-sm">
                   <span className="absolute inset-0 grid place-items-center text-white/90">
-                    {firstInitial}
+                    {avatarText}
                   </span>
                 </span>
               </button>
@@ -123,7 +118,7 @@ const Home = () => {
               >
                 <span className="relative h-8 w-8 rounded-full bg-[#0b1020]/70 border border-white/10 backdrop-blur-sm">
                   <span className="absolute inset-0 grid place-items-center text-white/90">
-                    {firstInitial}
+                    {avatarText}
                   </span>
                 </span>
               </button>
@@ -396,7 +391,7 @@ const Home = () => {
                 <div className="relative h-9 w-9 rounded-full">
                   <span className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-[#19cfbc]/25 to-blue-500/20 opacity-60" />
                   <span className="relative h-9 w-9 rounded-full bg-[#0b1020]/70 border border-white/10 backdrop-blur-sm grid place-items-center text-sm">
-                    {firstInitial}
+                    {avatarText}
                   </span>
                 </div>
                 <div className="text-xs">
