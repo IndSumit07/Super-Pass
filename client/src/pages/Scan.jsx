@@ -167,7 +167,7 @@ export default function EventScan() {
 
         await h.start(
           camId,
-          { fps: 10, qrbox: 260 },
+          { fps: 60, qrbox: 260 },
           (decodedText) => handleDecoded(decodedText),
           () => setStatus("Camera active. Scanning…")
         );
