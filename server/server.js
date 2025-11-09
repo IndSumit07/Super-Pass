@@ -8,6 +8,7 @@ import eventRouter from "./routes/event.routes.js";
 import paymentRouter from "./routes/payment.routes.js";
 import passRouter from "./routes/pass.routes.js";
 import checkinRouter from "./routes/checkin.routes.js";
+import helpRouter from "./routes/help.routes.js";
 
 const app = express();
 connectDB();
@@ -33,6 +34,7 @@ app.use("/api/events", eventRouter);
 app.use("/api/payments", paymentRouter);
 app.use("/api/passes", passRouter);
 app.use("/api/checkin", checkinRouter);
+app.use("/api/help", helpRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

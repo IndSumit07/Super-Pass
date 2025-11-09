@@ -17,6 +17,7 @@ import PassDetails from "./pages/PassDetails";
 import ScanPage from "./pages/Scan";
 import EventCheckins from "./pages/EventCheckins";
 import ScanPass from "./pages/Scan";
+import Help from "./pages/Help";
 
 const App = () => {
   return (
@@ -132,6 +133,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <EventCheckins />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/help"
+          element={
+            <ProtectedRoute>
+              <Help />
             </ProtectedRoute>
           }
         />
