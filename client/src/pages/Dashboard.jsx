@@ -1,5 +1,10 @@
 // src/pages/Dashboard.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useEffect as _useEffect,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   User2,
@@ -14,30 +19,37 @@ import {
   Search,
   Settings,
   ExternalLink,
-  CheckCircle2,
   ChevronRight,
   MapPin,
   Tag,
   Plus,
   LogOut,
-  House,
-  ExternalLinkIcon,
+  // NEW for hamburger/command palette
+  Menu,
+  X,
+  CornerDownLeft,
+  ArrowUp,
+  ArrowDown,
+  LayoutGrid,
+  HelpCircle,
+  Home as HomeIcon,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useEvents } from "../contexts/EventContext";
-import { usePasses } from "../contexts/PassContext"; // ✅ NEW: pulls purchased passes
+import { usePasses } from "../contexts/PassContext"; // purchased passes
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, logoutUser } = useAuth();
-  const { events, myEvents } = useEvents(); // fetched events
-  const { passes, fetchMyPasses, loadingPasses } = usePasses(); // ✅ purchased passes
+  const { myEvents } = useEvents();
+  const { passes, fetchMyPasses, loadingPasses } = usePasses();
+
   useEffect(() => {
     fetchMyPasses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --------- Profile (safe) ---------
+  // --------- Profile ---------
   const first =
     user?.fullname?.firstname || user?.firstName || user?.name || "";
   const last = user?.fullname?.lastname || user?.lastName || "";
@@ -70,9 +82,117 @@ const Dashboard = () => {
   // ✅ State
   const [tab, setTab] = useState("hosted");
   const [query, setQuery] = useState("");
-  const [passesQuery, setPassesQuery] = useState(""); // ✅ separate search for passes
+  const [passesQuery, setPassesQuery] = useState("");
 
-  // Map API event -> row shape dashboard expects
+  // ---------- Hamburger / Command palette ----------
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [cmdQuery, setCmdQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const baseLinks = useMemo(
+    () => [
+      {
+        title: "Home",
+        desc: "Back to the homepage",
+        icon: <HomeIcon className="h-5 w-5" />,
+        route: "/",
+        group: "Navigation",
+      },
+      {
+        title: "Dashboard",
+        desc: "Creator control center",
+        icon: <LayoutGrid className="h-5 w-5" />,
+        route: "/dashboard",
+        group: "Navigation",
+      },
+      {
+        title: "Events",
+        desc: "Browse all events",
+        icon: <CalendarDays className="h-5 w-5" />,
+        route: "/events",
+        group: "Navigation",
+      },
+      {
+        title: "Create Event",
+        desc: "Publish a new event",
+        icon: <Plus className="h-5 w-5" />,
+        route: "/events/create",
+        group: "Actions",
+      },
+      {
+        title: "Scan",
+        desc: "Open the QR scanner",
+        icon: <QrCode className="h-5 w-5" />,
+        route: "/scan",
+        group: "Actions",
+      },
+      {
+        title: "Settings",
+        desc: "Profile & app preferences",
+        icon: <Settings className="h-5 w-5" />,
+        route: "/settings",
+        group: "Navigation",
+      },
+      {
+        title: "Help",
+        desc: "FAQs and support",
+        icon: <HelpCircle className="h-5 w-5" />,
+        route: "/help",
+        group: "Support",
+      },
+    ],
+    []
+  );
+
+  const paletteLinks = useMemo(() => {
+    const q = cmdQuery.trim().toLowerCase();
+    if (!q) return baseLinks;
+    return baseLinks.filter(
+      (l) =>
+        l.title.toLowerCase().includes(q) ||
+        l.desc.toLowerCase().includes(q) ||
+        l.group.toLowerCase().includes(q)
+    );
+  }, [cmdQuery, baseLinks]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchOpen((v) => !v);
+        return;
+      }
+      if (!isSearchOpen) return;
+
+      if (e.key === "Escape") {
+        setIsSearchOpen(false);
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((p) => (p + 1) % Math.max(paletteLinks.length, 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex(
+          (p) =>
+            (p - 1 + Math.max(paletteLinks.length, 1)) %
+            Math.max(paletteLinks.length, 1)
+        );
+      } else if (e.key === "Enter") {
+        const item = paletteLinks[selectedIndex];
+        if (item) {
+          navigate(item.route);
+          setIsSearchOpen(false);
+          setCmdQuery("");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchOpen, paletteLinks, selectedIndex, navigate]);
+
+  // ---------- Rows/Data ----------
   const normalizeHosted = (ev) => {
     const id = ev._id || ev.id || ev.slug;
     const title = ev.title || "Untitled Event";
@@ -84,8 +204,8 @@ const Dashboard = () => {
       "—";
     const price = Number(ev.isPaid ? ev.price || 0 : 0);
     const category = ev.category || "Event";
-    const tickets = ev.capacity || 0; // if you have sales count, replace here
-    const scans = 0; // replace with check-ins metric when available
+    const tickets = ev.capacity || 0;
+    const scans = 0; // replace when you have check-in metric
     const status = (ev.status || "draft").toLowerCase();
     const statusLabel =
       status === "published"
@@ -185,7 +305,7 @@ const Dashboard = () => {
               <span className="ml-1 h-[10px] w-[10px] rounded-sm border border-white/20" />
             </div>
             <Link
-              to="/home"
+              to="/dashboard"
               className="text-xl md:text-2xl font-semibold tracking-tight"
             >
               <span className="font-forum text-[#19cfbc]">SuperPass</span>{" "}
@@ -194,25 +314,142 @@ const Dashboard = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate("/home")}
-              className="hidden md:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
-            >
-              <House className="h-4 w-4" />
-              Home
-            </button>
-
+            {/* Removed Home button as requested */}
             <button
               onClick={() => {
                 logoutUser();
               }}
               className="hidden md:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-red-600 px-4 h-10 text-sm hover:from-red-500 hover:to-red-500 transition"
             >
-              {/* <ExternalLinkIcon className="h-4 w-4" /> */}
+              <LogOut className="h-4 w-4" />
               Logout
+            </button>
+
+            {/* Hamburger opens command palette */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition"
+              aria-label="Open Command Palette"
+              title="Open quick navigation (Ctrl/⌘+K)"
+            >
+              <Menu className="h-5 w-5" />
             </button>
           </div>
         </header>
+
+        {/* Command Palette */}
+        {isSearchOpen && (
+          <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[10vh]">
+            {/* backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsSearchOpen(false)}
+            />
+            {/* panel */}
+            <div className="relative w-[92%] max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0f1a]/95 shadow-[0_20px_60px_rgba(0,0,0,.55)]">
+              {/* search input */}
+              <div className="flex items-center gap-3 px-4 sm:px-5 h-14 border-b border-white/10">
+                <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 grid place-items-center">
+                  <Search className="h-4 w-4 text-white/70" />
+                </div>
+                <input
+                  autoFocus
+                  value={cmdQuery}
+                  onChange={(e) => {
+                    setCmdQuery(e.target.value);
+                    setSelectedIndex(0);
+                  }}
+                  className="w-full bg-transparent outline-none text-sm sm:text-base placeholder:text-white/50"
+                  type="text"
+                  placeholder="Search pages, actions…"
+                />
+                <button
+                  className="text-[#99A1AF] flex items-center gap-2 text-xs"
+                  onClick={() => setIsSearchOpen(false)}
+                >
+                  <span className="bg-[#141720] rounded px-2 py-1">esc</span>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* results */}
+              <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/5">
+                {paletteLinks.length === 0 ? (
+                  <div className="p-5 text-sm text-white/60">No matches.</div>
+                ) : (
+                  <div className="p-1">
+                    {paletteLinks.map((link, idx) => {
+                      const active = idx === selectedIndex;
+                      return (
+                        <button
+                          key={`${link.route}-${idx}`}
+                          onClick={() => {
+                            navigate(link.route);
+                            setIsSearchOpen(false);
+                            setCmdQuery("");
+                          }}
+                          className={`w-full text-left px-4 py-3 rounded-xl transition select-none flex items-center justify-between ${
+                            active
+                              ? "bg-white/10 border border-white/10"
+                              : "hover:bg-white/5"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-lg bg-[#252528] grid place-items-center">
+                              {link.icon}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium">
+                                {link.title}
+                              </div>
+                              <div className="text-xs text-white/60">
+                                {link.desc}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-[11px] bg-[#141720] px-2 py-1 rounded-md text-white/60">
+                            {link.group}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* footer shortcuts */}
+              <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/10 text-[#99A1AF]">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1">
+                    <span className="bg-[#141720] p-1.5 rounded">
+                      <ArrowUp size={14} />
+                    </span>
+                    <span className="bg-[#141720] p-1.5 rounded">
+                      <ArrowDown size={14} />
+                    </span>
+                    <span className="ml-1 text-xs">navigate</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="bg-[#141720] p-1.5 rounded">
+                      <CornerDownLeft size={14} />
+                    </span>
+                    <span className="ml-1 text-xs">select</span>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-1">
+                    <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                      ⌘/Ctrl
+                    </span>
+                    <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                      K
+                    </span>
+                    <span className="ml-1 text-xs">toggle</span>
+                  </div>
+                </div>
+                <span className="text-xs">@SuperPass</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* profile card + key stats */}
         <section className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -497,8 +734,6 @@ const Dashboard = () => {
           </div>
         </section>
       </div>
-
-      {/* --- /bottom bar --- */}
     </div>
   );
 };
@@ -620,18 +855,6 @@ const ParticipatedRow = ({ ev, onOpen }) => (
       </button>
     </div>
   </div>
-);
-
-const Task = ({ title, due, badge }) => (
-  <li className="rounded-xl border border-white/10 bg-[#0b1020]/40 p-3">
-    <div className="flex items-center justify-between">
-      <p className="text-sm text-white/85">{title}</p>
-      <span className="text-[11px] px-2 py-0.5 rounded-full border border-white/10 bg-white/5">
-        {badge}
-      </span>
-    </div>
-    <p className="mt-1 text-xs text-white/60">Due {due}</p>
-  </li>
 );
 
 export default Dashboard;

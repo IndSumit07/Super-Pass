@@ -15,7 +15,6 @@ import RegisterEvent from "./pages/RegisterEvent";
 import MyPasses from "./pages/MyPasses";
 import PassDetails from "./pages/PassDetails";
 import ScanPage from "./pages/Scan";
-import EventCheckins from "./pages/EventCheckins";
 import ScanPass from "./pages/Scan";
 import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
@@ -130,14 +129,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/events/:eventId/checkins"
-          element={
-            <ProtectedRoute>
-              <EventCheckins />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/help"
           element={
