@@ -731,12 +731,6 @@ function EventDetails() {
                   >
                     Register Now
                   </Link>
-                  <Link
-                    to={`/events/${ev._id || ev.id}/checkins`}
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
-                  >
-                    View Tickets
-                  </Link>
                 </>
               )}
 
@@ -899,12 +893,6 @@ function EventDetails() {
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
                 >
                   Register
-                </Link>
-                <Link
-                  to={`/events/${ev._id || ev.id}/tickets`}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 h-10 text-sm hover:bg-white/10 transition"
-                >
-                  Tickets
                 </Link>
               </div>
             </div>
