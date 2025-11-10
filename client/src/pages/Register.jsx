@@ -7,6 +7,8 @@ import {
   ArrowRight,
   ArrowLeft,
   KeyRound,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -24,8 +26,14 @@ const Register = () => {
   const onChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
+  // Live validation
+  const isFirstValid = form.firstname.trim().length >= 3;
+  const isLastValid = form.lastname.trim().length >= 3;
+  const isPassValid = form.password.trim().length >= 6;
+
   const submitStep1 = async (e) => {
     e.preventDefault();
+    if (!isFirstValid || !isLastValid || !isPassValid) return; // simple guard
     const payload = {
       fullname: {
         firstname: form.firstname,
@@ -34,19 +42,13 @@ const Register = () => {
       email: form.email,
       password: form.password,
     };
-
     const response = await registerUser(payload);
-    if (response) {
-      setStep(2);
-    }
+    if (response) setStep(2);
   };
 
   const submitStep2 = async (e) => {
     e.preventDefault();
-    const payload = {
-      email: form.email,
-      otp: form.otp,
-    };
+    const payload = { email: form.email, otp: form.otp };
     await verifyEmail(payload);
   };
 
@@ -55,19 +57,6 @@ const Register = () => {
       {/* BG */}
       <div className="fixed inset-0 bg-gradient-to-b from-[#0b0f1a] via-[#080b14] to-[#05070d]" />
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(900px_420px_at_84%_-10%,rgba(64,131,255,0.22),transparent_60%),radial-gradient(780px_360px_at_-18%_12%,rgba(0,174,255,0.12),transparent_60%)]" />
-      <div
-        aria-hidden="true"
-        className="fixed right-[-14%] top-[-22%] w-[86%] h-[68%] opacity-45 pointer-events-none"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, rgba(120,150,255,.14) 0 1px, transparent 1px 32px),repeating-linear-gradient(90deg, rgba(120,150,255,.14) 0 1px, transparent 1px 32px)",
-          backgroundSize: "32px 32px",
-          maskImage:
-            "radial-gradient(72% 72% at 100% 0%, black 38%, transparent 100%)",
-          WebkitMaskImage:
-            "radial-gradient(72% 72% at 100% 0%, black 38%, transparent 100%)",
-        }}
-      />
 
       {/* Centered card */}
       <div className="relative z-10 min-h-[100svh] grid place-items-center p-4">
@@ -94,10 +83,20 @@ const Register = () => {
             {/* STEP 1 */}
             {step === 1 && (
               <form onSubmit={submitStep1} className="mt-6 space-y-4">
+                {/* Full Name */}
                 <div>
                   <label className="text-xs text-white/70">Full name</label>
                   <div className="mt-1 grid grid-cols-2 gap-2">
-                    <div className="h-12 px-3 rounded-xl border border-white/10 bg-[#0c1222]/60 flex items-center gap-2 focus-within:border-white/20">
+                    {/* First name */}
+                    <div
+                      className={`h-12 px-3 rounded-xl border bg-[#0c1222]/60 flex items-center gap-2 transition focus-within:border-white/20 ${
+                        form.firstname
+                          ? isFirstValid
+                            ? "border-emerald-500/40"
+                            : "border-rose-500/40"
+                          : "border-white/10"
+                      }`}
+                    >
                       <User className="h-4 w-4 text-white/60" />
                       <input
                         name="firstname"
@@ -107,8 +106,27 @@ const Register = () => {
                         className="w-full bg-transparent outline-none text-sm"
                         placeholder="First name"
                       />
+                      {form.firstname && (
+                        <>
+                          {isFirstValid ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-rose-400" />
+                          )}
+                        </>
+                      )}
                     </div>
-                    <div className="h-12 px-3 rounded-xl border border-white/10 bg-[#0c1222]/60 flex items-center gap-2 focus-within:border-white/20">
+
+                    {/* Last name */}
+                    <div
+                      className={`h-12 px-3 rounded-xl border bg-[#0c1222]/60 flex items-center gap-2 transition focus-within:border-white/20 ${
+                        form.lastname
+                          ? isLastValid
+                            ? "border-emerald-500/40"
+                            : "border-rose-500/40"
+                          : "border-white/10"
+                      }`}
+                    >
                       <User className="h-4 w-4 text-white/60" />
                       <input
                         name="lastname"
@@ -118,10 +136,27 @@ const Register = () => {
                         className="w-full bg-transparent outline-none text-sm"
                         placeholder="Last name"
                       />
+                      {form.lastname && (
+                        <>
+                          {isLastValid ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-rose-400" />
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
+                  {(form.firstname || form.lastname) && (
+                    <p className="mt-1 text-[11px] text-white/50">
+                      {(!isFirstValid || !isLastValid) && (
+                        <>Names must be at least 3 characters.</>
+                      )}
+                    </p>
+                  )}
                 </div>
 
+                {/* Email */}
                 <div>
                   <label className="text-xs text-white/70">Email</label>
                   <div className="mt-1 h-12 px-3 rounded-xl border border-white/10 bg-[#0c1222]/60 flex items-center gap-2 focus-within:border-white/20">
@@ -138,26 +173,44 @@ const Register = () => {
                   </div>
                 </div>
 
+                {/* Password */}
                 <div>
                   <label className="text-xs text-white/70">Password</label>
-                  <div className="mt-1 h-12 px-3 rounded-xl border border-white/10 bg-[#0c1222]/60 flex items-center gap-2 focus-within:border-white/20">
+                  <div
+                    className={`mt-1 h-12 px-3 rounded-xl border bg-[#0c1222]/60 flex items-center gap-2 transition focus-within:border-white/20 ${
+                      form.password
+                        ? isPassValid
+                          ? "border-emerald-500/40"
+                          : "border-rose-500/40"
+                        : "border-white/10"
+                    }`}
+                  >
                     <Lock className="h-4 w-4 text-white/60" />
                     <input
                       name="password"
                       type="password"
-                      minLength={6}
                       required
                       value={form.password}
                       onChange={onChange}
                       className="w-full bg-transparent outline-none text-sm"
                       placeholder="••••••••"
                     />
+                    {form.password && (
+                      <>
+                        {isPassValid ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-rose-400" />
+                        )}
+                      </>
+                    )}
                   </div>
                   <p className="mt-1 text-[11px] text-white/50">
-                    Use 6+ characters with a mix of letters & numbers.
+                    Use at least 6 characters.
                   </p>
                 </div>
 
+                {/* Navigation & submit */}
                 <div className="flex items-center justify-between text-xs">
                   <Link
                     to="/login"
@@ -213,7 +266,6 @@ const Register = () => {
                   <button
                     type="button"
                     onClick={async () => {
-                      // TODO: resend OTP
                       await new Promise((r) => setTimeout(r, 600));
                       alert("OTP resent");
                     }}

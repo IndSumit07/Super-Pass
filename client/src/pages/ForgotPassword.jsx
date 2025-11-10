@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, KeyRound, Lock, ArrowRight, ArrowLeft } from "lucide-react";
+import {
+  Mail,
+  KeyRound,
+  Lock,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 const ForgotPassword = () => {
@@ -12,54 +20,43 @@ const ForgotPassword = () => {
     password: "",
     confirm: "",
   });
+
   const onChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  // Validation
+  const isPassValid = form.password.trim().length >= 6;
+  const isMatch =
+    form.password && form.confirm && form.password === form.confirm;
 
   const submitEmail = async (e) => {
     e.preventDefault();
     const response = await forgotPassword(form.email);
-    if (response) {
-      setStep(2);
-    }
+    if (response) setStep(2);
   };
 
   const submitOtp = async (e) => {
     e.preventDefault();
-
     const response = await verifyResetOtp(form.email, form.otp);
-    if (response) {
-      setStep(3);
-    }
+    if (response) setStep(3);
   };
 
   const submitNewPass = async (e) => {
     e.preventDefault();
-    const response = await resetPassword(form.email, form.password);
+    if (!isPassValid || !isMatch) return;
+    await resetPassword(form.email, form.password);
   };
 
   return (
     <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
-      {/* BG */}
+      {/* Background */}
       <div className="fixed inset-0 bg-gradient-to-b from-[#0b0f1a] via-[#080b14] to-[#05070d]" />
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(900px_420px_at_84%_-10%,rgba(64,131,255,0.22),transparent_60%),radial-gradient(780px_360px_at_-18%_12%,rgba(0,174,255,0.12),transparent_60%)]" />
-      <div
-        aria-hidden="true"
-        className="fixed right-[-14%] top-[-22%] w-[86%] h-[68%] opacity-45 pointer-events-none"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, rgba(120,150,255,.14) 0 1px, transparent 1px 32px),repeating-linear-gradient(90deg, rgba(120,150,255,.14) 0 1px, transparent 1px 32px)",
-          backgroundSize: "32px 32px",
-          maskImage:
-            "radial-gradient(72% 72% at 100% 0%, black 38%, transparent 100%)",
-          WebkitMaskImage:
-            "radial-gradient(72% 72% at 100% 0%, black 38%, transparent 100%)",
-        }}
-      />
 
-      {/* Centered card */}
+      {/* Main container */}
       <div className="relative z-10 min-h-[100svh] grid place-items-center p-4">
         <div className="w-full max-w-[520px]">
-          {/* Brand */}
+          {/* Brand indicator */}
           <div className="flex items-center justify-center gap-2 mb-6">
             <span className="h-3 w-3 rounded bg-blue-500" />
             <span className="h-3 w-3 rounded bg-indigo-500" />
@@ -67,6 +64,7 @@ const ForgotPassword = () => {
             <span className="ml-1 h-[10px] w-[10px] rounded-sm border border-white/20" />
           </div>
 
+          {/* Card */}
           <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-6 md:p-7 shadow-[0_8px_30px_rgba(0,0,0,.35)]">
             <h1 className="text-center text-[26px] font-semibold tracking-tight">
               <span className="font-forum text-[#19cfbc]">SuperPass</span>
@@ -152,7 +150,6 @@ const ForgotPassword = () => {
                   <button
                     type="button"
                     onClick={async () => {
-                      // TODO: resend OTP
                       await new Promise((r) => setTimeout(r, 600));
                       alert("OTP resent");
                     }}
@@ -176,9 +173,18 @@ const ForgotPassword = () => {
             {/* STEP 3: New password */}
             {step === 3 && (
               <form onSubmit={submitNewPass} className="mt-6 space-y-4">
+                {/* New Password */}
                 <div>
                   <label className="text-xs text-white/70">New password</label>
-                  <div className="mt-1 h-12 px-3 rounded-xl border border-white/10 bg-[#0c1222]/60 flex items-center gap-2 focus-within:border-white/20">
+                  <div
+                    className={`mt-1 h-12 px-3 rounded-xl border flex items-center gap-2 bg-[#0c1222]/60 transition focus-within:border-white/20 ${
+                      form.password
+                        ? isPassValid
+                          ? "border-emerald-500/40"
+                          : "border-rose-500/40"
+                        : "border-white/10"
+                    }`}
+                  >
                     <Lock className="h-4 w-4 text-white/60" />
                     <input
                       name="password"
@@ -190,14 +196,35 @@ const ForgotPassword = () => {
                       className="w-full bg-transparent outline-none text-sm"
                       placeholder="••••••••"
                     />
+                    {form.password && (
+                      <>
+                        {isPassValid ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-rose-400" />
+                        )}
+                      </>
+                    )}
                   </div>
+                  <p className="mt-1 text-[11px] text-white/50">
+                    Use at least 6 characters.
+                  </p>
                 </div>
 
+                {/* Confirm Password */}
                 <div>
                   <label className="text-xs text-white/70">
                     Confirm password
                   </label>
-                  <div className="mt-1 h-12 px-3 rounded-xl border border-white/10 bg-[#0c1222]/60 flex items-center gap-2 focus-within:border-white/20">
+                  <div
+                    className={`mt-1 h-12 px-3 rounded-xl border flex items-center gap-2 bg-[#0c1222]/60 transition focus-within:border-white/20 ${
+                      form.confirm
+                        ? isMatch
+                          ? "border-emerald-500/40"
+                          : "border-rose-500/40"
+                        : "border-white/10"
+                    }`}
+                  >
                     <Lock className="h-4 w-4 text-white/60" />
                     <input
                       name="confirm"
@@ -209,12 +236,25 @@ const ForgotPassword = () => {
                       className="w-full bg-transparent outline-none text-sm"
                       placeholder="••••••••"
                     />
+                    {form.confirm && (
+                      <>
+                        {isMatch ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-rose-400" />
+                        )}
+                      </>
+                    )}
                   </div>
                   <p className="mt-1 text-[11px] text-white/50">
-                    Must match your new password.
+                    {form.confirm &&
+                      (isMatch
+                        ? "Passwords match."
+                        : "Passwords do not match.")}
                   </p>
                 </div>
 
+                {/* Navigation */}
                 <div className="flex items-center justify-between text-xs">
                   <button
                     type="button"
@@ -237,6 +277,7 @@ const ForgotPassword = () => {
             )}
           </div>
 
+          {/* Footer */}
           <p className="mt-4 text-center text-xs text-white/50">
             Remembered your password?{" "}
             <Link

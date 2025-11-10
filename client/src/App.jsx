@@ -20,6 +20,7 @@ import ScanPass from "./pages/Scan";
 import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
+import ManageEvent from "./pages/ManageEvent";
 
 const App = () => {
   return (
@@ -97,7 +98,6 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/events/:id/register"
           element={
@@ -148,6 +148,14 @@ const App = () => {
         />
         <Route path="*" element={<NotFound />} />
         <Route path="/about" element={<About />} />
+        <Route
+          path="/events/:id/manage"
+          element={
+            <ProtectedRoute>
+              <ManageEvent />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </>
   );

@@ -22,7 +22,6 @@ import {
   Home as HomeIcon,
   Settings,
   HelpCircle,
-  User2,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -30,22 +29,20 @@ const Home = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
 
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const first =
-    user?.fullname?.firstname || user?.firstName || user?.name || "";
-  const last = user?.fullname?.lastname || user?.lastName || "";
+  const first = user?.firstName || user?.name || "";
+  const last = user?.lastName || "";
   const avatarText =
     `${first?.[0] || ""}${last?.[0] || ""}`.toUpperCase() ||
     (user?.email?.[0] || "U").toUpperCase();
 
-  // ---- quick nav helper
+  // navigation helper
   const goTo = (path) => () => navigate(path);
 
-  // ---- palette items (curated site map)
+  // command palette items
   const baseLinks = useMemo(
     () => [
       {
@@ -109,7 +106,6 @@ const Home = () => {
         route: "/help",
         group: "Support",
       },
-      // your portfolio pages
       {
         title: "Projects",
         desc: "View my projects",
@@ -140,10 +136,9 @@ const Home = () => {
     );
   }, [baseLinks, isAuthenticated, query]);
 
-  // ---- keyboard shortcuts
+  // keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // open/close palette
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setIsSearchOpen((v) => !v);
@@ -181,7 +176,7 @@ const Home = () => {
 
   return (
     <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
-      {/* Background layers */}
+      {/* BG */}
       <div className="fixed inset-0 bg-gradient-to-b from-[#0b0f1a] via-[#080b14] to-[#05070d]" />
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(900px_420px_at_84%_-10%,rgba(64,131,255,0.22),transparent_60%),radial-gradient(780px_360px_at_-18%_12%,rgba(0,174,255,0.12),transparent_60%)]" />
       <div
@@ -198,352 +193,181 @@ const Home = () => {
         }}
       />
 
-      {/* Content */}
-      <div className="relative z-10 mx-auto w-[92%] max-w-[1100px] py-6 md:py-10">
-        {/* Top bar */}
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-blue-500" />
-              <span className="h-3 w-3 rounded bg-indigo-500" />
-              <span className="h-3 w-3 rounded bg-emerald-500" />
-              <span className="ml-1 h-[10px] w-[10px] rounded-sm border border-white/20" />
-            </div>
-            <h1 className="text-xl md:text-2xl font-semibold tracking-tight">
-              <span className="font-forum text-[#19cfbc]">SuperPass</span>{" "}
-              <span className="text-white/80">Home</span>
-            </h1>
-          </div>
+      {/* Header */}
+      <header className="relative z-10 mx-auto w-[92%] max-w-[1100px] py-6 flex items-center justify-between">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded bg-blue-500" />
+          <span className="h-3 w-3 rounded bg-indigo-500" />
+          <span className="h-3 w-3 rounded bg-emerald-500" />
+          <span className="ml-1 h-[10px] w-[10px] rounded-sm border border-white/20" />
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight ml-1">
+            <span className="font-forum text-[#19cfbc]">SuperPass</span>
+          </h1>
+        </div>
 
-          {/* Command Palette (search overlay) */}
-          {isSearchOpen && (
-            <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[10vh]">
-              {/* backdrop */}
-              <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={() => setIsSearchOpen(false)}
-              />
-              {/* panel */}
-              <div className="relative w-[92%] max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0f1a]/95 shadow-[0_20px_60px_rgba(0,0,0,.55)]">
-                {/* search input */}
-                <div className="flex items-center gap-3 px-4 sm:px-5 h-14 border-b border-white/10">
-                  <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 grid place-items-center">
-                    <Search className="h-4 w-4 text-white/70" />
-                  </div>
-                  <input
-                    autoFocus
-                    value={query}
-                    onChange={(e) => {
-                      setQuery(e.target.value);
-                      setSelectedIndex(0);
-                    }}
-                    className="w-full bg-transparent outline-none text-sm sm:text-base placeholder:text-white/50"
-                    type="text"
-                    placeholder="Search pages, actions, or type ? for help…"
-                  />
-                  <button
-                    className="text-[#99A1AF] flex items-center gap-2 text-xs"
-                    onClick={() => setIsSearchOpen(false)}
-                  >
-                    <span className="bg-[#141720] rounded px-2 py-1">esc</span>
-                    <X size={18} />
-                  </button>
-                </div>
-
-                {/* results */}
-                <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/5">
-                  {paletteLinks.length === 0 ? (
-                    <div className="p-5 text-sm text-white/60">No matches.</div>
-                  ) : (
-                    <div className="p-1">
-                      {paletteLinks.map((link, idx) => {
-                        const active = idx === selectedIndex;
-                        return (
-                          <button
-                            key={`${link.route}-${idx}`}
-                            onClick={() => {
-                              navigate(link.route);
-                              setIsSearchOpen(false);
-                              setQuery("");
-                            }}
-                            className={`w-full text-left px-4 py-3 rounded-xl transition select-none flex items-center justify-between ${
-                              active
-                                ? "bg-white/10 border border-white/10"
-                                : "hover:bg-white/5"
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-lg bg-[#252528] grid place-items-center">
-                                {link.icon}
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium">
-                                  {link.title}
-                                </div>
-                                <div className="text-xs text-white/60">
-                                  {link.desc}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-[11px] bg-[#141720] px-2 py-1 rounded-md text-white/60">
-                              {link.group}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* footer shortcuts */}
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/10 text-[#99A1AF]">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1">
-                      <span className="bg-[#141720] p-1.5 rounded">
-                        <ArrowUp size={14} />
-                      </span>
-                      <span className="bg-[#141720] p-1.5 rounded">
-                        <ArrowDown size={14} />
-                      </span>
-                      <span className="ml-1 text-xs">navigate</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="bg-[#141720] p-1.5 rounded">
-                        <CornerDownLeft size={14} />
-                      </span>
-                      <span className="ml-1 text-xs">select</span>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-1">
-                      <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
-                        ⌘/Ctrl
-                      </span>
-                      <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
-                        K
-                      </span>
-                      <span className="ml-1 text-xs">toggle</span>
-                    </div>
-                  </div>
-                  <span className="text-xs">@SuperPass</span>
-                </div>
-              </div>
-            </div>
+        {/* Avatar + Hamburger */}
+        <div className="flex items-center gap-3">
+          {isAuthenticated && (
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="relative h-9 w-9 md:h-10 md:w-10 rounded-full group transition active:scale-95"
+              aria-label="Open dashboard"
+            >
+              <span className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-[#19cfbc]/40 to-blue-600/40 blur-sm opacity-70 group-hover:opacity-100 transition" />
+              <span className="relative h-full w-full rounded-full bg-[#0b1020]/80 border border-white/10 backdrop-blur-sm grid place-items-center font-semibold text-white/90 text-[13px] group-hover:scale-110 transition">
+                {avatarText}
+              </span>
+            </button>
           )}
 
-          {/* Desktop nav + auth */}
-          <div className="hidden md:flex items-center gap-4">
-            <nav className="flex items-center gap-4 text-sm text-white/80">
-              <button
-                onClick={() => setIsSearchOpen(true)}
-                className="hover:text-white transition"
-                title="Search (Ctrl/⌘+K)"
-              >
-                <Search size={18} />
-              </button>
-              <Link to="/events" className="hover:text-white transition">
-                Events
-              </Link>
-              <Link to="/my-passes" className="hover:text-white transition">
-                Passes
-              </Link>
-            </nav>
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition"
+            aria-label="Open Command Palette"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
 
-            {!isAuthenticated ? (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/login"
-                  className="py-2 px-3 rounded-lg border border-white/10 bg-white/5 text-sm hover:bg-white/10 transition"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to="/register"
-                  className="py-2 px-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-sm transition"
-                >
-                  Register
-                </Link>
+      {/* Command Palette (same across devices) */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[10vh] animate-fadeInUp">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsSearchOpen(false)}
+          />
+          <div className="relative w-[92%] max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0f1a]/95 shadow-[0_20px_60px_rgba(0,0,0,.55)]">
+            {/* Input */}
+            <div className="flex items-center gap-3 px-4 sm:px-5 h-14 border-b border-white/10">
+              <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 grid place-items-center">
+                <Search className="h-4 w-4 text-white/70" />
               </div>
-            ) : (
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setSelectedIndex(0);
+                }}
+                className="w-full bg-transparent outline-none text-sm sm:text-base placeholder:text-white/50"
+                type="text"
+                placeholder="Search pages, actions, or type ? for help…"
+              />
               <button
-                onClick={() => navigate("/dashboard")}
-                className="relative h-9 w-9 rounded-full grid place-items-center text-[13px] font-semibold select-none transition active:scale-95"
-                aria-label="Open dashboard"
+                className="text-[#99A1AF] flex items-center gap-2 text-xs"
+                onClick={() => setIsSearchOpen(false)}
               >
-                <span className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-[#19cfbc]/25 to-blue-500/20 opacity-60" />
-                <span className="relative h-9 w-9 rounded-full bg-[#0b1020]/70 border border-white/10 backdrop-blur-sm">
-                  <span className="absolute inset-0 grid place-items-center text-white/90">
-                    {avatarText}
-                  </span>
-                </span>
+                <span className="bg-[#141720] rounded px-2 py-1">esc</span>
+                <X size={18} />
               </button>
-            )}
-          </div>
+            </div>
 
-          {/* Mobile: hamburger + (optional) avatar */}
-          <div className="md:hidden flex items-center gap-2">
-            {isAuthenticated && (
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="relative h-8 w-8 rounded-full grid place-items-center text-[12px] font-semibold select-none"
-                aria-label="Open dashboard"
-              >
-                <span className="relative h-8 w-8 rounded-full bg-[#0b1020]/70 border border-white/10 backdrop-blur-sm">
-                  <span className="absolute inset-0 grid place-items-center text-white/90">
-                    {avatarText}
+            {/* Results */}
+            <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/5">
+              {paletteLinks.length === 0 ? (
+                <div className="p-5 text-sm text-white/60">No matches.</div>
+              ) : (
+                <div className="p-1">
+                  {paletteLinks.map((link, idx) => {
+                    const active = idx === selectedIndex;
+                    return (
+                      <button
+                        key={`${link.route}-${idx}`}
+                        onClick={() => {
+                          navigate(link.route);
+                          setIsSearchOpen(false);
+                          setQuery("");
+                        }}
+                        className={`w-full text-left px-4 py-3 rounded-xl transition select-none flex items-center justify-between ${
+                          active
+                            ? "bg-white/10 border border-white/10"
+                            : "hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-lg bg-[#252528] grid place-items-center">
+                            {link.icon}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium">
+                              {link.title}
+                            </div>
+                            <div className="text-xs text-white/60">
+                              {link.desc}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-[11px] bg-[#141720] px-2 py-1 rounded-md text-white/60">
+                          {link.group}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/10 text-[#99A1AF]">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1">
+                  <span className="bg-[#141720] p-1.5 rounded">
+                    <ArrowUp size={14} />
                   </span>
-                </span>
-              </button>
-            )}
+                  <span className="bg-[#141720] p-1.5 rounded">
+                    <ArrowDown size={14} />
+                  </span>
+                  <span className="ml-1 text-xs">navigate</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="bg-[#141720] p-1.5 rounded">
+                    <CornerDownLeft size={14} />
+                  </span>
+                  <span className="ml-1 text-xs">select</span>
+                </div>
+                <div className="hidden sm:flex items-center gap-1">
+                  <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                    ⌘/Ctrl
+                  </span>
+                  <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                    K
+                  </span>
+                  <span className="ml-1 text-xs">toggle</span>
+                </div>
+              </div>
+              <span className="text-xs">@SuperPass</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hero Section */}
+      <section className="relative z-10 mx-auto w-[92%] max-w-[1100px] mt-12 grid md:grid-cols-2 gap-6">
+        <div>
+          <p className="text-xs tracking-[0.22em] uppercase text-white/60">
+            Platform
+          </p>
+          <h2 className="mt-2 text-[32px] md:text-[38px] leading-[1.1] font-semibold tracking-tight text-white/90">
+            <span className="font-forum text-[#19cfbc]">SuperPass</span>
+            <br />
+            <span className="text-white/85">All-in-one event web app</span>
+          </h2>
+          <p className="mt-4 text-white/70 max-w-[52ch]">
+            Create and publish events in minutes, accept secure payments, issue
+            QR tickets, and manage check-ins — all from one modern interface.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
             <button
-              className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition"
-              aria-label="Open menu"
-              onClick={() => setMobileOpen(true)}
+              onClick={goTo("/events")}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
             >
-              <Menu className="h-5 w-5" />
+              <CalendarDays className="h-4 w-4" />
+              View Events
+              <ExternalLink className="h-4 w-4 opacity-70" />
             </button>
-          </div>
-        </header>
-
-        {/* Hero */}
-        <section className="mt-8 md:mt-12 grid md:grid-cols-2 gap-6">
-          <div>
-            <p className="text-xs tracking-[0.22em] uppercase text-white/60">
-              Platform
-            </p>
-            <h2 className="mt-2 text-[32px] md:text-[38px] leading-[1.1] font-semibold tracking-tight text-white/90">
-              <span className="font-forum text-[#19cfbc]">SuperPass</span>
-              <br />
-              <span className="text-white/85">All-in-one event web app</span>
-            </h2>
-            <p className="mt-4 text-white/70 max-w-[52ch]">
-              Create and publish events in minutes, accept secure payments,
-              issue QR tickets, and manage check-ins — all from one modern
-              interface.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                onClick={goTo("/events")}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
-              >
-                <CalendarDays className="h-4 w-4" />
-                View Events
-                <ExternalLink className="h-4 w-4 opacity-70" />
-              </button>
-              <button
-                onClick={goTo("/events/create")}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
-              >
-                <Plus className="h-4 w-4" />
-                Create Event
-              </button>
-              <button
-                onClick={goTo("/scan")}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
-              >
-                <QrCode className="h-4 w-4" />
-                Scan Tickets
-              </button>
-            </div>
-          </div>
-
-          {/* Search box */}
-          <div className="md:pl-6">
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 md:p-5">
-              <label htmlFor="search" className="sr-only">
-                Search events
-              </label>
-              <div className="h-12 px-3 rounded-xl border border-white/10 bg-[#0c1222]/60 flex items-center gap-2">
-                <Search className="h-4 w-4 text-white/60" />
-                <input
-                  id="search"
-                  type="text"
-                  placeholder="Search events, categories, or organizers…"
-                  className="w-full bg-transparent outline-none text-sm placeholder:text-white/50"
-                  onFocus={() => setIsSearchOpen(true)}
-                  readOnly
-                />
-              </div>
-
-              {/* Suggested quick filters */}
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                {[
-                  "Tech",
-                  "Design",
-                  "Workshops",
-                  "College Fests",
-                  "Conferences",
-                ].map((t) => (
-                  <button
-                    key={t}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70 hover:bg-white/10 transition"
-                    onClick={goTo(`/events?tag=${encodeURIComponent(t)}`)}
-                  >
-                    #{t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* What you can do */}
-        <section className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <OverviewCard
-            icon={<ClipboardList className="h-5 w-5" />}
-            title="Publish events fast"
-            desc="Set up titles, schedules, pricing, and capacity — go live in minutes."
-            cta="Create an event"
-            onClick={goTo("/events/create")}
-          />
-          <OverviewCard
-            icon={<Ticket className="h-5 w-5" />}
-            title="Sell & verify tickets"
-            desc="Accept secure payments and issue QR tickets. Scan at entry to prevent fraud."
-            cta="Open ticketing"
-            onClick={goTo("/events")}
-          />
-          <OverviewCard
-            icon={<LayoutGrid className="h-5 w-5" />}
-            title="Branded pages"
-            desc="Customize cover images, colors and details to match your event identity."
-            cta="See examples"
-            onClick={goTo("/events?sort=featured")}
-          />
-          <OverviewCard
-            icon={<ShieldCheck className="h-5 w-5" />}
-            title="Secure & reliable"
-            desc="Built on modern MERN stack with safe payments and role-based access."
-            cta="Learn more"
-            onClick={goTo("/about")}
-          />
-          <OverviewCard
-            icon={<Zap className="h-5 w-5" />}
-            title="Effortless check-ins"
-            desc="Lightning-fast QR scans with volunteer access for smooth entry."
-            cta="Start scanning"
-            onClick={goTo("/scan")}
-          />
-          <OverviewCard
-            icon={<CalendarDays className="h-5 w-5" />}
-            title="Discover events"
-            desc="Browse upcoming conferences, workshops, and fests around you."
-            cta="Explore events"
-            onClick={goTo("/events")}
-          />
-        </section>
-
-        {/* CTA banner */}
-        <section className="mt-10 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h3 className="text-lg md:text-xl font-semibold">
-              Ready to host your next event?
-            </h3>
-            <p className="text-sm text-white/70 mt-1">
-              Create a listing, collect payments, and manage attendees in one
-              place.
-            </p>
-          </div>
-          <div className="flex gap-2">
             <button
               onClick={goTo("/events/create")}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
@@ -551,182 +375,142 @@ const Home = () => {
               <Plus className="h-4 w-4" />
               Create Event
             </button>
-            <Link
-              to="/about"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
-            >
-              Learn more
-              <ExternalLink className="h-4 w-4 opacity-70" />
-            </Link>
           </div>
-        </section>
+        </div>
 
-        {/* Footer */}
-        <footer className="mt-10 pb-8 text-xs text-white/60">
-          <div className="flex flex-wrap items-center gap-3">
-            <span>© {new Date().getFullYear()} SuperPass</span>
-            <span className="opacity-40">•</span>
-            <Link to="/terms" className="hover:text-white transition">
-              Terms
-            </Link>
-            <span className="opacity-40">•</span>
-            <Link to="/privacy" className="hover:text-white transition">
-              Privacy
-            </Link>
-            <span className="opacity-40">•</span>
-            <Link to="/help" className="hover:text-white transition">
-              Help
-            </Link>
+        <div className="md:pl-6">
+          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 md:p-5">
+            <div className="h-12 px-3 rounded-xl border border-white/10 bg-[#0c1222]/60 flex items-center gap-2">
+              <Search className="h-4 w-4 text-white/60" />
+              <input
+                type="text"
+                placeholder="Search events or organizers..."
+                className="w-full bg-transparent outline-none text-sm placeholder:text-white/50"
+                onFocus={() => setIsSearchOpen(true)}
+                readOnly
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              {[
+                "Tech",
+                "Design",
+                "Workshops",
+                "College Fests",
+                "Conferences",
+              ].map((t) => (
+                <button
+                  key={t}
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70 hover:bg-white/10 transition"
+                  onClick={goTo(`/events?tag=${encodeURIComponent(t)}`)}
+                >
+                  #{t}
+                </button>
+              ))}
+            </div>
           </div>
-        </footer>
-      </div>
+        </div>
+      </section>
 
-      {/* ===== Mobile slide-out menu ===== */}
-      {/* Backdrop */}
-      <div
-        className={`md:hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity ${
-          mobileOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
-        onClick={() => setMobileOpen(false)}
-        aria-hidden={!mobileOpen}
-      />
-      {/* Panel */}
-      <aside
-        className={`md:hidden fixed right-0 top-0 z-[61] h-full w-[78%] max-w-[360px] border-l border-white/10 bg-[#0b0f1a]/95 backdrop-blur-md transition-transform ${
-          mobileOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-        role="dialog"
-        aria-label="Navigation menu"
-      >
-        <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded bg-blue-500" />
-            <span className="h-3 w-3 rounded bg-indigo-500" />
-            <span className="h-3 w-3 rounded bg-emerald-500" />
-            <span className="ml-1 h-[10px] w-[10px] rounded-sm border border-white/20" />
-            <span className="ml-1 font-forum text-[#19cfbc] text-lg">
-              SuperPass
-            </span>
-          </div>
+      {/* What you can do */}
+      <section className="mt-14 relative z-10 mx-auto w-[92%] max-w-[1100px] grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <OverviewCard
+          icon={<ClipboardList className="h-5 w-5" />}
+          title="Publish events fast"
+          desc="Set up titles, schedules, pricing, and capacity — go live in minutes."
+          cta="Create an event"
+          onClick={goTo("/events/create")}
+        />
+        <OverviewCard
+          icon={<Ticket className="h-5 w-5" />}
+          title="Sell & verify tickets"
+          desc="Accept secure payments and issue QR tickets. Scan at entry to prevent fraud."
+          cta="Open ticketing"
+          onClick={goTo("/events")}
+        />
+        <OverviewCard
+          icon={<LayoutGrid className="h-5 w-5" />}
+          title="Branded pages"
+          desc="Customize cover images, colors and details to match your event identity."
+          cta="See examples"
+          onClick={goTo("/events?sort=featured")}
+        />
+        <OverviewCard
+          icon={<ShieldCheck className="h-5 w-5" />}
+          title="Secure & reliable"
+          desc="Built on modern MERN stack with safe payments and role-based access."
+          cta="Learn more"
+          onClick={goTo("/about")}
+        />
+        <OverviewCard
+          icon={<Zap className="h-5 w-5" />}
+          title="Effortless check-ins"
+          desc="Lightning-fast QR scans with volunteer access for smooth entry."
+          cta="Start scanning"
+          onClick={goTo("/scan")}
+        />
+        <OverviewCard
+          icon={<CalendarDays className="h-5 w-5" />}
+          title="Discover events"
+          desc="Browse upcoming conferences, workshops, and fests around you."
+          cta="Explore events"
+          onClick={goTo("/events")}
+        />
+      </section>
+
+      {/* CTA Banner */}
+      <section className="mt-14 relative z-10 mx-auto w-[92%] max-w-[1100px] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h3 className="text-lg md:text-xl font-semibold">
+            Ready to host your next event?
+          </h3>
+          <p className="text-sm text-white/70 mt-1">
+            Create a listing, collect payments, and manage attendees in one
+            place.
+          </p>
+        </div>
+        <div className="flex gap-2">
           <button
-            className="h-9 w-9 grid place-items-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition"
-            aria-label="Close menu"
-            onClick={() => setMobileOpen(false)}
+            onClick={goTo("/events/create")}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
           >
-            <X className="h-5 w-5" />
+            <Plus className="h-4 w-4" />
+            Create Event
           </button>
+          <Link
+            to="/about"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
+          >
+            Learn more
+            <ExternalLink className="h-4 w-4 opacity-70" />
+          </Link>
         </div>
+      </section>
 
-        <nav className="px-4 py-4 text-sm">
-          <MobileNavLink
-            to="/"
-            onClick={() => setMobileOpen(false)}
-            label="Home"
-          />
-          <MobileNavLink
-            to="/events"
-            onClick={() => setMobileOpen(false)}
-            label="Events"
-          />
-          <MobileNavLink
-            to="/my-passes"
-            onClick={() => setMobileOpen(false)}
-            label="Passes"
-          />
-          <MobileNavLink
-            to="/help"
-            onClick={() => setMobileOpen(false)}
-            label="Help"
-          />
-          {isAuthenticated && (
-            <>
-              <MobileNavLink
-                to="/events/create"
-                onClick={() => setMobileOpen(false)}
-                label="Create Event"
-              />
-              <MobileNavLink
-                to="/scan"
-                onClick={() => setMobileOpen(false)}
-                label="Scan Tickets"
-              />
-              <MobileNavLink
-                to="/settings"
-                onClick={() => setMobileOpen(false)}
-                label="Settings"
-              />
-            </>
-          )}
-        </nav>
-
-        <div className="px-4 py-3 border-t border-white/10">
-          {!isAuthenticated ? (
-            <div className="grid grid-cols-2 gap-2">
-              <Link
-                to="/login"
-                onClick={() => setMobileOpen(false)}
-                className="h-10 rounded-lg border border-white/10 bg-white/5 grid place-items-center hover:bg-white/10 transition"
-              >
-                Sign in
-              </Link>
-              <Link
-                to="/register"
-                onClick={() => setMobileOpen(false)}
-                className="h-10 rounded-lg bg-gradient-to-r from-blue-600 to-blue-600 grid place-items-center hover:from-blue-500 hover:to-indigo-500 transition"
-              >
-                Register
-              </Link>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative h-9 w-9 rounded-full">
-                  <span className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-[#19cfbc]/25 to-blue-500/20 opacity-60" />
-                  <span className="relative h-9 w-9 rounded-full bg-[#0b1020]/70 border border-white/10 backdrop-blur-sm grid place-items-center text-sm">
-                    {avatarText}
-                  </span>
-                </div>
-                <div className="text-xs">
-                  <p className="text-white/90 font-medium leading-4">
-                    {user?.firstName || user?.name || "User"}
-                  </p>
-                  <p className="text-white/60 leading-4">{user?.email}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  navigate("/dashboard");
-                }}
-                className="h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-xs hover:bg-white/10 transition"
-              >
-                Dashboard
-              </button>
-            </div>
-          )}
+      {/* Footer */}
+      <footer className="mt-14 pb-8 relative z-10 mx-auto w-[92%] max-w-[1100px] text-xs text-white/60">
+        <div className="flex flex-wrap items-center gap-3">
+          <span>© {new Date().getFullYear()} SuperPass</span>
+          <span className="opacity-40">•</span>
+          <Link to="/terms" className="hover:text-white transition">
+            Terms
+          </Link>
+          <span className="opacity-40">•</span>
+          <Link to="/privacy" className="hover:text-white transition">
+            Privacy
+          </Link>
+          <span className="opacity-40">•</span>
+          <Link to="/help" className="hover:text-white transition">
+            Help
+          </Link>
         </div>
-      </aside>
+      </footer>
     </div>
   );
 };
 
-function MobileNavLink({ to, onClick, label }) {
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className="block rounded-lg px-3 py-3 text-white/85 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 transition"
-    >
-      {label}
-    </Link>
-  );
-}
-
 function OverviewCard({ icon, title, desc, cta, onClick }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 flex flex-col">
+    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 flex flex-col transition hover:bg-white/10 hover:border-white/20">
       <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/10 grid place-items-center">
         <span className="text-white/85">{icon}</span>
       </div>

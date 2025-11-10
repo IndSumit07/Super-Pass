@@ -9,6 +9,19 @@ import {
   MapPin,
   IndianRupee,
   Ticket as TicketIcon,
+  ArrowLeft,
+  Menu,
+  Search,
+  X,
+  CornerDownLeft,
+  ArrowUp,
+  ArrowDown,
+  LayoutGrid,
+  Plus,
+  Settings,
+  HelpCircle,
+  Home as HomeIcon,
+  QrCode,
 } from "lucide-react";
 
 const FALLBACK_TPL = {
@@ -31,6 +44,11 @@ export default function RegisterEvent() {
   const { buyTicket, buying } = usePasses();
   const [qty, setQty] = useState(1);
 
+  // Command palette state
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [cmdQuery, setCmdQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
   useEffect(() => {
     fetchEventById(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -50,6 +68,111 @@ export default function RegisterEvent() {
     if (pass) navigate("/my-passes");
   };
 
+  // Command palette links
+  const baseLinks = useMemo(
+    () => [
+      {
+        title: "Home",
+        desc: "Back to the homepage",
+        icon: <HomeIcon className="h-5 w-5" />,
+        route: "/",
+        group: "Navigation",
+      },
+      {
+        title: "Dashboard",
+        desc: "Creator control center",
+        icon: <LayoutGrid className="h-5 w-5" />,
+        route: "/dashboard",
+        group: "Navigation",
+      },
+      {
+        title: "Events",
+        desc: "Browse all events",
+        icon: <CalendarDays className="h-5 w-5" />,
+        route: "/events",
+        group: "Navigation",
+      },
+      {
+        title: "Create Event",
+        desc: "Publish a new event",
+        icon: <Plus className="h-5 w-5" />,
+        route: "/events/create",
+        group: "Actions",
+      },
+      {
+        title: "Scan Tickets",
+        desc: "Open QR scanner",
+        icon: <QrCode className="h-5 w-5" />,
+        route: "/scan",
+        group: "Actions",
+      },
+      {
+        title: "Settings",
+        desc: "Profile & app preferences",
+        icon: <Settings className="h-5 w-5" />,
+        route: "/settings",
+        group: "Navigation",
+      },
+      {
+        title: "Help",
+        desc: "FAQs and support",
+        icon: <HelpCircle className="h-5 w-5" />,
+        route: "/help",
+        group: "Support",
+      },
+    ],
+    []
+  );
+
+  const paletteLinks = useMemo(() => {
+    const q = cmdQuery.trim().toLowerCase();
+    if (!q) return baseLinks;
+    return baseLinks.filter(
+      (l) =>
+        l.title.toLowerCase().includes(q) ||
+        l.desc.toLowerCase().includes(q) ||
+        l.group.toLowerCase().includes(q)
+    );
+  }, [cmdQuery, baseLinks]);
+
+  // Keyboard shortcuts for command palette
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchOpen((v) => !v);
+        return;
+      }
+      if (!isSearchOpen) return;
+
+      if (e.key === "Escape") {
+        setIsSearchOpen(false);
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((p) => (p + 1) % Math.max(paletteLinks.length, 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex(
+          (p) =>
+            (p - 1 + Math.max(paletteLinks.length, 1)) %
+            Math.max(paletteLinks.length, 1)
+        );
+      } else if (e.key === "Enter") {
+        const item = paletteLinks[selectedIndex];
+        if (item) {
+          navigate(item.route);
+          setIsSearchOpen(false);
+          setCmdQuery("");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchOpen, paletteLinks, selectedIndex, navigate]);
+
   if (loading || !ev) {
     return (
       <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
@@ -61,8 +184,158 @@ export default function RegisterEvent() {
 
   return (
     <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
+      {/* Background */}
       <div className="fixed inset-0 bg-gradient-to-b from-[#0b0f1a] via-[#080b14] to-[#05070d]" />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(900px_420px_at_84%_-10%,rgba(64,131,255,0.22),transparent_60%),radial-gradient(780px_360px_at_-18%_12%,rgba(0,174,255,0.12),transparent_60%)]" />
+      <div
+        aria-hidden="true"
+        className="fixed right-[-14%] top-[-22%] w-[86%] h-[68%] opacity-45 pointer-events-none"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(0deg, rgba(120,150,255,.14) 0 1px, transparent 1px 32px),repeating-linear-gradient(90deg, rgba(120,150,255,.14) 0 1px, transparent 1px 32px)",
+          backgroundSize: "32px 32px",
+          maskImage:
+            "radial-gradient(72% 72% at 100% 0%, black 38%, transparent 100%)",
+          WebkitMaskImage:
+            "radial-gradient(72% 72% at 100% 0%, black 38%, transparent 100%)",
+        }}
+      />
+
       <div className="relative z-10 mx-auto w-[92%] max-w-[980px] py-8">
+        {/* Top bar: Back + Hamburger */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white transition"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition"
+            aria-label="Open Command Palette"
+            title="Open quick navigation (Ctrl/⌘+K)"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Command Palette */}
+        {isSearchOpen && (
+          <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[10vh]">
+            {/* backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsSearchOpen(false)}
+            />
+            {/* panel */}
+            <div className="relative w-[92%] max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0f1a]/95 shadow-[0_20px_60px_rgba(0,0,0,.55)]">
+              {/* search input */}
+              <div className="flex items-center gap-3 px-4 sm:px-5 h-14 border-b border-white/10">
+                <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 grid place-items-center">
+                  <Search className="h-4 w-4 text-white/70" />
+                </div>
+                <input
+                  autoFocus
+                  value={cmdQuery}
+                  onChange={(e) => {
+                    setCmdQuery(e.target.value);
+                    setSelectedIndex(0);
+                  }}
+                  className="w-full bg-transparent outline-none text-sm sm:text-base placeholder:text-white/50"
+                  type="text"
+                  placeholder="Search pages, actions…"
+                />
+                <button
+                  className="text-[#99A1AF] flex items-center gap-2 text-xs"
+                  onClick={() => setIsSearchOpen(false)}
+                >
+                  <span className="bg-[#141720] rounded px-2 py-1">esc</span>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* results */}
+              <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/5">
+                {paletteLinks.length === 0 ? (
+                  <div className="p-5 text-sm text-white/60">No matches.</div>
+                ) : (
+                  <div className="p-1">
+                    {paletteLinks.map((link, idx) => {
+                      const active = idx === selectedIndex;
+                      return (
+                        <button
+                          key={`${link.route}-${idx}`}
+                          onClick={() => {
+                            navigate(link.route);
+                            setIsSearchOpen(false);
+                            setCmdQuery("");
+                          }}
+                          className={`w-full text-left px-4 py-3 rounded-xl transition select-none flex items-center justify-between ${
+                            active
+                              ? "bg-white/10 border border-white/10"
+                              : "hover:bg-white/5"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-lg bg-[#252528] grid place-items-center">
+                              {link.icon}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium">
+                                {link.title}
+                              </div>
+                              <div className="text-xs text-white/60">
+                                {link.desc}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-[11px] bg-[#141720] px-2 py-1 rounded-md text-white/60">
+                            {link.group}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* footer shortcuts */}
+              <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/10 text-[#99A1AF]">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1">
+                    <span className="bg-[#141720] p-1.5 rounded">
+                      <ArrowUp size={14} />
+                    </span>
+                    <span className="bg-[#141720] p-1.5 rounded">
+                      <ArrowDown size={14} />
+                    </span>
+                    <span className="ml-1 text-xs">navigate</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="bg-[#141720] p-1.5 rounded">
+                      <CornerDownLeft size={14} />
+                    </span>
+                    <span className="ml-1 text-xs">select</span>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-1">
+                    <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                      ⌘/Ctrl
+                    </span>
+                    <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                      K
+                    </span>
+                    <span className="ml-1 text-xs">toggle</span>
+                  </div>
+                </div>
+                <span className="text-xs">@SuperPass</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Page title */}
         <h1 className="text-xl md:text-2xl font-semibold">
           <span className="font-forum text-[#19cfbc]">Register</span>{" "}
           <span className="text-white/85">for {ev.title}</span>
@@ -246,6 +519,7 @@ function TicketPreview({ tpl, event, logo }) {
 
           <div className="shrink-0 grid place-items-center">
             <div className="h-20 w-20 rounded-md border border-white/30 bg-black/30 grid place-items-center">
+              {/* Simple QR placeholder (kept SVG to avoid extra deps) */}
               <svg
                 width="28"
                 height="28"

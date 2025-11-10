@@ -6,7 +6,6 @@ import {
   MapPin,
   IndianRupee,
   ArrowLeft,
-  Share2,
   Users,
   Clock,
   Tag,
@@ -19,6 +18,17 @@ import {
   Check,
   QrCode,
   Ticket as TicketIcon,
+  // NEW for command palette/hamburger
+  Menu,
+  Search,
+  CornerDownLeft,
+  ArrowUp,
+  ArrowDown,
+  LayoutGrid,
+  Plus,
+  Settings,
+  HelpCircle,
+  Home as HomeIcon,
 } from "lucide-react";
 import { useEvents } from "../contexts/EventContext";
 import { useAuth } from "../contexts/AuthContext";
@@ -136,7 +146,7 @@ function EventDetails() {
     deleteEvent,
     actionLoading,
   } = useEvents();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   // Fetch event
   useEffect(() => {
@@ -164,6 +174,11 @@ function EventDetails() {
   const [socialLabel, setSocialLabel] = useState("");
   const [socialUrl, setSocialUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Command palette state
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [cmdQuery, setCmdQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Sync form with event when it loads/changes
   useEffect(() => {
@@ -198,6 +213,124 @@ function EventDetails() {
         Number(form.teamMax || 0) >= Number(form.teamMin || 0));
     return !missing && priceOk && capacityOk && teamOk;
   }, [form]);
+
+  // ---------- Command Palette Links (same model as Home/Events) ----------
+  const baseLinks = useMemo(
+    () => [
+      {
+        title: "Home",
+        desc: "Back to the homepage",
+        icon: <HomeIcon className="h-5 w-5" />,
+        route: "/",
+        group: "Navigation",
+      },
+      {
+        title: "Dashboard",
+        desc: "Creator control center",
+        icon: <LayoutGrid className="h-5 w-5" />,
+        route: "/dashboard",
+        group: "Navigation",
+        auth: true,
+      },
+      {
+        title: "My Passes",
+        desc: "View tickets you purchased",
+        icon: <TicketIcon className="h-5 w-5" />,
+        route: "/my-passes",
+        group: "Navigation",
+        auth: true,
+      },
+      {
+        title: "Events",
+        desc: "Browse all events",
+        icon: <CalendarDays className="h-5 w-5" />,
+        route: "/events",
+        group: "Navigation",
+      },
+      {
+        title: "Create Event",
+        desc: "Publish a new event",
+        icon: <Plus className="h-5 w-5" />,
+        route: "/events/create",
+        group: "Actions",
+        auth: true,
+      },
+      {
+        title: "Scan Tickets",
+        desc: "Open QR scanner",
+        icon: <QrCode className="h-5 w-5" />,
+        route: "/scan",
+        group: "Actions",
+        auth: true,
+      },
+      {
+        title: "Settings",
+        desc: "Profile & app preferences",
+        icon: <Settings className="h-5 w-5" />,
+        route: "/settings",
+        group: "Navigation",
+        auth: true,
+      },
+      {
+        title: "Help",
+        desc: "FAQs and support",
+        icon: <HelpCircle className="h-5 w-5" />,
+        route: "/help",
+        group: "Support",
+      },
+    ],
+    []
+  );
+
+  const paletteLinks = useMemo(() => {
+    const list = baseLinks.filter((l) => (l.auth ? isAuthenticated : true));
+    const q = cmdQuery.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (l) =>
+        l.title.toLowerCase().includes(q) ||
+        l.desc.toLowerCase().includes(q) ||
+        l.group.toLowerCase().includes(q)
+    );
+  }, [baseLinks, isAuthenticated, cmdQuery]);
+
+  // keyboard shortcuts for command palette
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchOpen((v) => !v);
+        return;
+      }
+      if (!isSearchOpen) return;
+
+      if (e.key === "Escape") {
+        setIsSearchOpen(false);
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((p) => (p + 1) % Math.max(paletteLinks.length, 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex(
+          (p) =>
+            (p - 1 + Math.max(paletteLinks.length, 1)) %
+            Math.max(paletteLinks.length, 1)
+        );
+      } else if (e.key === "Enter") {
+        const item = paletteLinks[selectedIndex];
+        if (item) {
+          navigate(item.route);
+          setIsSearchOpen(false);
+          setCmdQuery("");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchOpen, paletteLinks, selectedIndex, navigate]);
 
   // ----- Early returns AFTER all hooks are declared -----
   if (loading) {
@@ -368,18 +501,130 @@ function EventDetails() {
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
 
+          {/* Replaced Share with hamburger that opens command palette */}
           <button
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 h-10 text-sm hover:bg-white/10 transition"
-            onClick={() => {
-              const url = window.location.href;
-              navigator.clipboard.writeText(url);
-            }}
-            title="Copy event link"
+            className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition"
+            onClick={() => setIsSearchOpen(true)}
+            aria-label="Open Command Palette"
+            title="Open quick navigation (Ctrl/⌘+K)"
           >
-            <Share2 className="h-4 w-4" />
-            Share
+            <Menu className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Command Palette (same behavior as Home/Events) */}
+        {isSearchOpen && (
+          <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[10vh]">
+            {/* backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsSearchOpen(false)}
+            />
+            {/* panel */}
+            <div className="relative w-[92%] max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0f1a]/95 shadow-[0_20px_60px_rgba(0,0,0,.55)]">
+              {/* search input */}
+              <div className="flex items-center gap-3 px-4 sm:px-5 h-14 border-b border-white/10">
+                <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 grid place-items-center">
+                  <Search className="h-4 w-4 text-white/70" />
+                </div>
+                <input
+                  autoFocus
+                  value={cmdQuery}
+                  onChange={(e) => {
+                    setCmdQuery(e.target.value);
+                    setSelectedIndex(0);
+                  }}
+                  className="w-full bg-transparent outline-none text-sm sm:text-base placeholder:text-white/50"
+                  type="text"
+                  placeholder="Search pages, actions, or type ? for help…"
+                />
+                <button
+                  className="text-[#99A1AF] flex items-center gap-2 text-xs"
+                  onClick={() => setIsSearchOpen(false)}
+                >
+                  <span className="bg-[#141720] rounded px-2 py-1">esc</span>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* results */}
+              <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/5">
+                {paletteLinks.length === 0 ? (
+                  <div className="p-5 text-sm text-white/60">No matches.</div>
+                ) : (
+                  <div className="p-1">
+                    {paletteLinks.map((link, idx) => {
+                      const active = idx === selectedIndex;
+                      return (
+                        <button
+                          key={`${link.route}-${idx}`}
+                          onClick={() => {
+                            navigate(link.route);
+                            setIsSearchOpen(false);
+                            setCmdQuery("");
+                          }}
+                          className={`w-full text-left px-4 py-3 rounded-xl transition select-none flex items-center justify-between ${
+                            active
+                              ? "bg-white/10 border border-white/10"
+                              : "hover:bg-white/5"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-lg bg-[#252528] grid place-items-center">
+                              {link.icon}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium">
+                                {link.title}
+                              </div>
+                              <div className="text-xs text-white/60">
+                                {link.desc}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-[11px] bg-[#141720] px-2 py-1 rounded-md text-white/60">
+                            {link.group}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* footer shortcuts */}
+              <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/10 text-[#99A1AF]">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1">
+                    <span className="bg-[#141720] p-1.5 rounded">
+                      <ArrowUp size={14} />
+                    </span>
+                    <span className="bg-[#141720] p-1.5 rounded">
+                      <ArrowDown size={14} />
+                    </span>
+                    <span className="ml-1 text-xs">navigate</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="bg-[#141720] p-1.5 rounded">
+                      <CornerDownLeft size={14} />
+                    </span>
+                    <span className="ml-1 text-xs">select</span>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-1">
+                    <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                      ⌘/Ctrl
+                    </span>
+                    <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                      K
+                    </span>
+                    <span className="ml-1 text-xs">toggle</span>
+                  </div>
+                </div>
+                <span className="text-xs">@SuperPass</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Hero */}
         <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
@@ -477,21 +722,34 @@ function EventDetails() {
 
             {/* Quick Actions + Owner controls */}
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                to={`/events/${ev._id || ev.id}/register`}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
-              >
-                Register Now
-              </Link>
-              <Link
-                to={`/events/${ev._id || ev.id}/checkins`}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
-              >
-                View Tickets
-              </Link>
+              {/* Not owner: show Register + Tickets */}
+              {!isOwner && (
+                <>
+                  <Link
+                    to={`/events/${ev._id || ev.id}/register`}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+                  >
+                    Register Now
+                  </Link>
+                  <Link
+                    to={`/events/${ev._id || ev.id}/checkins`}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
+                  >
+                    View Tickets
+                  </Link>
+                </>
+              )}
 
+              {/* Owner: show Manage (replaces View Tickets), plus Edit/Delete */}
               {isOwner && (
                 <>
+                  <Link
+                    to={`/events/${ev._id || ev.id}/manage`}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+                    title="Manage event"
+                  >
+                    Manage
+                  </Link>
                   <button
                     type="button"
                     onClick={() => setEditOpen(true)}
