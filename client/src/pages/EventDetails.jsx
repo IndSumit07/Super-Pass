@@ -865,37 +865,41 @@ function EventDetails() {
 
           {/* Right column: Ticketing + Ticket Preview + Links + Venue */}
           <div className="space-y-4">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <h3 className="text-sm font-semibold text-white/90">Ticketing</h3>
-              <div className="mt-2 text-sm text-white/75 space-y-1">
-                <div>
-                  Type: <b>{isPaid ? "Paid" : "Free"}</b>
+            {!isOwner && (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <h3 className="text-sm font-semibold text-white/90">
+                  Ticketing
+                </h3>
+                <div className="mt-2 text-sm text-white/75 space-y-1">
+                  <div>
+                    Type: <b>{isPaid ? "Paid" : "Free"}</b>
+                  </div>
+                  {isPaid && (
+                    <div>
+                      Price: <b>₹ {price}</b>
+                    </div>
+                  )}
+                  {ev.capacity && (
+                    <div>
+                      Capacity: <b>{ev.capacity}</b>
+                    </div>
+                  )}
+                  {ev.regDeadline && (
+                    <div>
+                      Registration deadline: <b>{fmtDate(ev.regDeadline)}</b>
+                    </div>
+                  )}
                 </div>
-                {isPaid && (
-                  <div>
-                    Price: <b>₹ {price}</b>
-                  </div>
-                )}
-                {ev.capacity && (
-                  <div>
-                    Capacity: <b>{ev.capacity}</b>
-                  </div>
-                )}
-                {ev.regDeadline && (
-                  <div>
-                    Registration deadline: <b>{fmtDate(ev.regDeadline)}</b>
-                  </div>
-                )}
+                <div className="mt-4 flex gap-2">
+                  <Link
+                    to={`/events/${ev._id || ev.id}/register`}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+                  >
+                    Register
+                  </Link>
+                </div>
               </div>
-              <div className="mt-4 flex gap-2">
-                <Link
-                  to={`/events/${ev._id || ev.id}/register`}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
-                >
-                  Register
-                </Link>
-              </div>
-            </div>
+            )}
 
             {/* Ticket Preview */}
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
