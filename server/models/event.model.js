@@ -102,6 +102,10 @@ const EventSchema = new mongoose.Schema(
     eligibility: [{ type: String, trim: true }],
     stages: [StageSchema],
     timeline: [TimelineItemSchema],
+    registered: {
+      type: Number,
+      default: 0,
+    },
 
     // extras
     prizes: { type: String, trim: true },

@@ -28,6 +28,8 @@ const PassSchema = new mongoose.Schema(
       ticketTemplate: Object,
     },
 
+    quantity: { type: Number, default: 1 },
+
     amount: { type: Number, required: true }, // in paise
     currency: { type: String, default: "INR" },
     status: {

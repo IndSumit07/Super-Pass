@@ -34,7 +34,7 @@ import { useEvents } from "../contexts/EventContext";
 import { useAuth } from "../contexts/AuthContext";
 import Loader from "../components/Loader";
 
-/* ---------- Ticket Templates (same palette/shape keys as Create flow) ---------- */
+/* ---------- Ticket Templates ---------- */
 const TEMPLATES = [
   {
     key: "classic",
@@ -85,7 +85,6 @@ const TEMPLATES = [
     cornerStyle: "rounded-3xl",
   },
 ];
-
 const DEFAULT_TEMPLATE = TEMPLATES[0];
 
 const EMPTY_FORM = {
@@ -95,30 +94,24 @@ const EMPTY_FORM = {
   category: "",
   description: "",
   mode: "Offline",
-  // schedule
   start: "",
   end: "",
   regDeadline: "",
-  // venue
   venueName: "",
   address: "",
   city: "",
   state: "",
   pincode: "",
-  // ticketing
   isPaid: false,
   price: "",
   capacity: "",
-  // team
   isTeamEvent: false,
   teamMin: "",
   teamMax: "",
-  // lists
   tags: [],
   eligibility: [],
   stages: [],
   timeline: [],
-  // extras
   prizes: "",
   rewards: "",
   submissionFormat: "",
@@ -131,7 +124,6 @@ const EMPTY_FORM = {
   website: "",
   socials: [],
   status: "draft",
-  // NEW: ticket template in form state
   ticketTemplate: DEFAULT_TEMPLATE,
 };
 
@@ -148,7 +140,6 @@ function EventDetails() {
   } = useEvents();
   const { user, isAuthenticated } = useAuth();
 
-  // Fetch event
   useEffect(() => {
     fetchEventById(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -214,7 +205,7 @@ function EventDetails() {
     return !missing && priceOk && capacityOk && teamOk;
   }, [form]);
 
-  // ---------- Command Palette Links (same model as Home/Events) ----------
+  // ---------- Command Palette Links ----------
   const baseLinks = useMemo(
     () => [
       {
@@ -332,7 +323,7 @@ function EventDetails() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isSearchOpen, paletteLinks, selectedIndex, navigate]);
 
-  // ----- Early returns AFTER all hooks are declared -----
+  // ----- Early returns AFTER all hooks -----
   if (loading) {
     return (
       <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
@@ -385,6 +376,14 @@ function EventDetails() {
 
   const price = Number(ev.price || 0);
   const isPaid = !!ev.isPaid && price > 0;
+
+  // NEW: registered/sold-out logic
+  const capacity = Number(ev.capacity || 0);
+  const registered = Number(
+    ev.registered ?? ev.registeredCount ?? ev.ticketsSold ?? 0
+  );
+  const hasCapacity = capacity > 0;
+  const soldOut = hasCapacity && registered >= capacity;
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -501,7 +500,7 @@ function EventDetails() {
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
 
-          {/* Replaced Share with hamburger that opens command palette */}
+          {/* Hamburger -> command palette */}
           <button
             className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition"
             onClick={() => setIsSearchOpen(true)}
@@ -512,17 +511,14 @@ function EventDetails() {
           </button>
         </div>
 
-        {/* Command Palette (same behavior as Home/Events) */}
+        {/* Command Palette */}
         {isSearchOpen && (
           <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[10vh]">
-            {/* backdrop */}
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setIsSearchOpen(false)}
             />
-            {/* panel */}
             <div className="relative w-[92%] max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0f1a]/95 shadow-[0_20px_60px_rgba(0,0,0,.55)]">
-              {/* search input */}
               <div className="flex items-center gap-3 px-4 sm:px-5 h-14 border-b border-white/10">
                 <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 grid place-items-center">
                   <Search className="h-4 w-4 text-white/70" />
@@ -547,7 +543,6 @@ function EventDetails() {
                 </button>
               </div>
 
-              {/* results */}
               <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/5">
                 {paletteLinks.length === 0 ? (
                   <div className="p-5 text-sm text-white/60">No matches.</div>
@@ -592,7 +587,6 @@ function EventDetails() {
                 )}
               </div>
 
-              {/* footer shortcuts */}
               <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/10 text-[#99A1AF]">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1">
@@ -675,12 +669,26 @@ function EventDetails() {
                 <IndianRupee className="h-4 w-4" />
                 {isPaid ? price : "Free"}
               </div>
-              {ev.capacity && (
+
+              {/* Capacity */}
+              {hasCapacity && (
                 <div className="inline-flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Capacity: {ev.capacity}
+                  Capacity: {capacity}
                 </div>
               )}
+
+              {/* NEW: Registered counter */}
+              {hasCapacity && (
+                <div className="inline-flex items-center gap-2">
+                  <TicketIcon className="h-4 w-4" />
+                  Registered:{" "}
+                  <b className={soldOut ? "text-rose-300" : ""}>
+                    {registered} / {capacity}
+                  </b>
+                </div>
+              )}
+
               {ev.mode && (
                 <div className="inline-flex items-center gap-2">
                   <Clock className="h-4 w-4" />
@@ -722,19 +730,29 @@ function EventDetails() {
 
             {/* Quick Actions + Owner controls */}
             <div className="mt-6 flex flex-wrap gap-3">
-              {/* Not owner: show Register + Tickets */}
+              {/* Not owner: show CTA; soldOut replaces with disabled button */}
               {!isOwner && (
                 <>
-                  <Link
-                    to={`/events/${ev._id || ev.id}/register`}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
-                  >
-                    Register Now
-                  </Link>
+                  {soldOut ? (
+                    <button
+                      disabled
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-600 px-4 h-11 text-sm opacity-80 cursor-not-allowed"
+                      title="Sold Out"
+                    >
+                      Sold Out
+                    </button>
+                  ) : (
+                    <Link
+                      to={`/events/${ev._id || ev.id}/register`}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+                    >
+                      Register Now
+                    </Link>
+                  )}
                 </>
               )}
 
-              {/* Owner: show Manage (replaces View Tickets), plus Edit/Delete */}
+              {/* Owner controls */}
               {isOwner && (
                 <>
                   <Link
@@ -865,6 +883,8 @@ function EventDetails() {
 
           {/* Right column: Ticketing + Ticket Preview + Links + Venue */}
           <div className="space-y-4">
+            {/* Hide ticketing card for owner; show to attendees.
+                Replace Register with Sold Out when needed */}
             {!isOwner && (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <h3 className="text-sm font-semibold text-white/90">
@@ -879,10 +899,18 @@ function EventDetails() {
                       Price: <b>₹ {price}</b>
                     </div>
                   )}
-                  {ev.capacity && (
-                    <div>
-                      Capacity: <b>{ev.capacity}</b>
-                    </div>
+                  {hasCapacity && (
+                    <>
+                      <div>
+                        Capacity: <b>{capacity}</b>
+                      </div>
+                      <div>
+                        Registered:{" "}
+                        <b className={soldOut ? "text-rose-300" : ""}>
+                          {registered} / {capacity}
+                        </b>
+                      </div>
+                    </>
                   )}
                   {ev.regDeadline && (
                     <div>
@@ -890,13 +918,24 @@ function EventDetails() {
                     </div>
                   )}
                 </div>
+
                 <div className="mt-4 flex gap-2">
-                  <Link
-                    to={`/events/${ev._id || ev.id}/register`}
-                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
-                  >
-                    Register
-                  </Link>
+                  {soldOut ? (
+                    <button
+                      disabled
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-600 h-10 text-sm opacity-80 cursor-not-allowed"
+                      title="Sold Out"
+                    >
+                      Sold Out
+                    </button>
+                  ) : (
+                    <Link
+                      to={`/events/${ev._id || ev.id}/register`}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+                    >
+                      Register
+                    </Link>
+                  )}
                 </div>
               </div>
             )}
@@ -1009,7 +1048,6 @@ function EventDetails() {
           setSocialUrl={setSocialUrl}
           addSocial={addSocial}
           removeSocial={removeSocial}
-          // NEW: pass templates for selection
           templates={TEMPLATES}
         />
       )}
@@ -1152,7 +1190,6 @@ function mapEventToForm(ev) {
     website: ev.website || "",
     socials: Array.isArray(ev.socials) ? ev.socials : [],
     status: ev.status || "draft",
-    // NEW: ticket template
     ticketTemplate:
       ev.ticketTemplate && ev.ticketTemplate.key
         ? ev.ticketTemplate
@@ -1366,7 +1403,7 @@ function TemplatePicker({ templates, value, onChange, previewEvent, logo }) {
   );
 }
 
-/* The overlay is a pure component (no hooks inside), so it doesn't affect hook order */
+/* The overlay is a pure component */
 function EditOverlay(props) {
   const {
     form,
@@ -1821,7 +1858,7 @@ function EditOverlay(props) {
               )}
             </Card>
 
-            {/* NEW: Ticket Template chooser in Edit */}
+            {/* Ticket Template chooser in Edit */}
             <Card title="Ticket Style">
               <TemplatePicker
                 templates={templates}
