@@ -4,6 +4,7 @@ import Razorpay from "razorpay";
 import Event from "../models/event.model.js";
 import Pass from "../models/pass.model.js";
 import { signQR } from "../utils/qrSigner.js";
+import { User } from "../models/user.model.js"; // keep your named import if your model exports that way
 
 const RZP_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RZP_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -13,34 +14,34 @@ const razorpay = new Razorpay({
   key_secret: RZP_KEY_SECRET,
 });
 
-// helper to build safe receipts (Razorpay <= 40 chars)
+// Razorpay receipts must be <= 40 chars
 function shortReceipt(eventId) {
   const eid = String(eventId)
     .replace(/[^a-zA-Z0-9]/g, "")
     .slice(-12);
   const ts = Date.now().toString().slice(-10);
-  return `evt-${eid}-${ts}`; // ~27 chars
+  return `evt-${eid}-${ts}`;
 }
 
-/** Atomically increment registered with capacity guard */
+/** Atomically increment `registered` with capacity guard */
 async function incRegisteredWithGuard(eventId, qty) {
   return Event.findOneAndUpdate(
     {
       _id: eventId,
-      // capacity unset/null => allow; otherwise ensure registered + qty <= capacity
+      status: "published",
+      // if capacity present, enforce registered + qty <= capacity
       $or: [
         { capacity: { $exists: false } },
         { capacity: null },
         { $expr: { $lte: ["$registered", { $subtract: ["$capacity", qty] }] } },
       ],
-      status: "published",
     },
     { $inc: { registered: qty } },
     { new: true }
   ).lean();
 }
 
-/** Compensation helper (best effort) */
+/** Best-effort compensation if pass creation fails */
 async function decRegistered(eventId, qty) {
   try {
     await Event.updateOne(
@@ -110,9 +111,17 @@ export const createOrder = async (req, res) => {
           status: "paid",
         });
 
-        // Sign QR securely
+        // Sign QR
         const qr = signQR(pass._id.toString());
         await Pass.findByIdAndUpdate(pass._id, { $set: { qrPayload: qr } });
+
+        // ✅ Update owner metrics (tickets only; revenue 0 for free)
+        if (event.createdBy) {
+          await User.updateOne(
+            { _id: event.createdBy },
+            { $inc: { ticketsSold: qty } }
+          );
+        }
 
         return res.json({
           success: true,
@@ -154,7 +163,7 @@ export const verifyPayment = async (req, res) => {
     const userId = req.user?._id;
     const {
       eventId,
-      orderId, // optional in your client, but kept for compatibility
+      orderId, // optional from your client
       razorpay_payment_id,
       razorpay_order_id,
       razorpay_signature,
@@ -171,7 +180,7 @@ export const verifyPayment = async (req, res) => {
         .json({ success: false, message: "Missing payment fields." });
     }
 
-    // verify signature
+    // Verify signature
     const generatedSignature = crypto
       .createHmac("sha256", RZP_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -189,7 +198,7 @@ export const verifyPayment = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Event not found." });
 
-    // fetch order to get quantity from notes (fallback 1)
+    // Read qty from order notes (fallback 1)
     const rzpOrder = await razorpay.orders.fetch(razorpay_order_id);
     const qty = Math.max(1, Number(rzpOrder?.notes?.quantity || 1));
 
@@ -204,7 +213,7 @@ export const verifyPayment = async (req, res) => {
     }
 
     try {
-      // Create pass record (single doc with quantity; you can mint 1-per-ticket if you prefer)
+      // Create pass (single doc with quantity)
       const pass = await Pass.create({
         user: userId,
         event: event._id,
@@ -228,8 +237,24 @@ export const verifyPayment = async (req, res) => {
         razorpay_signature,
       });
 
+      // Sign QR
       const qr = signQR(pass._id.toString());
       await Pass.findByIdAndUpdate(pass._id, { $set: { qrPayload: qr } });
+
+      // ✅ Update owner metrics (tickets & revenue in rupees)
+      if (event.createdBy) {
+        await User.updateOne(
+          { _id: event.createdBy },
+          {
+            $inc: {
+              ticketsSold: qty,
+              totalRevenue: price * qty, // stored in rupees
+            },
+          }
+        );
+      }
+
+      // (Optional) If you also want to track buyer stats, do it here with $inc on the buyer.
 
       return res.json({ success: true, data: pass });
     } catch (err) {

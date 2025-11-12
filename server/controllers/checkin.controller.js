@@ -1,9 +1,11 @@
+// controllers/checkin.controller.js
 import Event from "../models/event.model.js";
 import Pass from "../models/pass.model.js";
 import Checkin from "../models/checkin.model.js";
 import { verifyQR } from "../utils/qrSigner.js";
+import { User } from "../models/user.model.js";
 
-// Ensure user is event owner
+/** Ensure the current user owns the event */
 async function assertOwner(eventId, userId) {
   const ev = await Event.findById(eventId).select("_id createdBy").lean();
   if (!ev) return { ok: false, status: 404, message: "Event not found" };
@@ -24,12 +26,15 @@ export const scanPass = async (req, res) => {
     const { code, notes } = req.body;
     const userId = req.user?._id;
 
+    // Only event owner can scan
     const owner = await assertOwner(eventId, userId);
-    if (!owner.ok)
+    if (!owner.ok) {
       return res
         .status(owner.status)
         .json({ success: false, message: owner.message });
+    }
 
+    // Verify QR
     const { valid, passId, reason } = verifyQR(code);
     if (!valid) {
       await Checkin.create({
@@ -45,9 +50,14 @@ export const scanPass = async (req, res) => {
         .json({ success: false, message: "Invalid QR code." });
     }
 
+    // ✅ Atomic organizer metric: increment qrValidated
+    await User.updateOne({ _id: userId }, { $inc: { qrValidated: 1 } });
+
+    // Lookup pass + user
     const pass = await Pass.findById(passId)
-      .populate("user", "fullname firstName lastName email")
+      .populate("user", "fullname firstName lastName email phone")
       .lean();
+
     if (!pass) {
       await Checkin.create({
         event: eventId,
@@ -62,6 +72,7 @@ export const scanPass = async (req, res) => {
         .json({ success: false, message: "Pass not found." });
     }
 
+    // Ensure pass belongs to this event
     if (String(pass.event) !== String(eventId)) {
       await Checkin.create({
         event: eventId,
@@ -77,24 +88,30 @@ export const scanPass = async (req, res) => {
       });
     }
 
-    // Mark checkedIn on pass (idempotent)
+    // Idempotent mark: checkedIn = true
     await Pass.findByIdAndUpdate(pass._id, { $set: { checkedIn: true } });
 
+    // Build a friendly name snapshot
     const name =
-      pass.user?.fullname?.firstname && pass.user?.fullname?.lastname
-        ? `${pass.user.fullname.firstname} ${pass.user.fullname.lastname}`
-        : pass.user?.firstName || pass.user?.lastName
-        ? `${pass.user.firstName || ""} ${pass.user.lastName || ""}`.trim()
-        : "Guest";
+      (pass.user?.fullname?.firstname || pass.user?.firstName || "")
+        .toString()
+        .trim() +
+      (pass.user?.fullname?.lastname || pass.user?.lastName
+        ? " " + (pass.user?.fullname?.lastname || pass.user?.lastName)
+        : "");
 
     const check = await Checkin.create({
       event: eventId,
       pass: pass._id,
-      user: pass.user?._id,
+      user: pass.user?._id || null,
       scannedBy: userId,
       notes: notes || "",
       success: true,
-      userSnapshot: { name, email: pass.user?.email || "" },
+      userSnapshot: {
+        name: name || "Guest",
+        email: pass.user?.email || "",
+        phone: pass.user?.phone || "",
+      },
     });
 
     return res.json({
@@ -111,6 +128,8 @@ export const scanPass = async (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
+
+// GET /api/checkin/:eventId/participants
 export const listParticipants = async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -146,7 +165,8 @@ export const listParticipants = async (req, res) => {
           p.userSnapshot?.name ||
           [p.user?.fullname?.firstname, p.user?.fullname?.lastname]
             .filter(Boolean)
-            .join(" "),
+            .join(" ") ||
+          [p.user?.firstname, p.user?.lastname].filter(Boolean).join(" "),
         email: p.userSnapshot?.email || p.user?.email || "",
         phone: p.userSnapshot?.phone || p.user?.phone || "",
       },
@@ -166,10 +186,11 @@ export const listCheckins = async (req, res) => {
     const userId = req.user?._id;
 
     const owner = await assertOwner(eventId, userId);
-    if (!owner.ok)
+    if (!owner.ok) {
       return res
         .status(owner.status)
         .json({ success: false, message: owner.message });
+    }
 
     const rows = await Checkin.find({ event: eventId })
       .sort("-createdAt")

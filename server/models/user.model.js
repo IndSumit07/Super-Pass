@@ -44,6 +44,18 @@ const userSchema = new mongoose.Schema(
       },
       isVerified: { type: Boolean, default: false },
     },
+    ticketsSold: {
+      type: Number,
+      default: 0,
+    },
+    qrValidated: {
+      type: Number,
+      default: 0,
+    },
+    totalRevenue: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

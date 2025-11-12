@@ -1,10 +1,5 @@
 // src/pages/Dashboard.jsx
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-  useEffect as _useEffect,
-} from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   User2,
@@ -15,7 +10,6 @@ import {
   Ticket,
   QrCode,
   IndianRupee,
-  BarChart3,
   Search,
   Settings,
   ExternalLink,
@@ -24,7 +18,6 @@ import {
   Tag,
   Plus,
   LogOut,
-  // NEW for hamburger/command palette
   Menu,
   X,
   CornerDownLeft,
@@ -36,7 +29,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useEvents } from "../contexts/EventContext";
-import { usePasses } from "../contexts/PassContext"; // purchased passes
+import { usePasses } from "../contexts/PassContext";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -68,18 +61,11 @@ const Dashboard = () => {
     verified: true,
   };
 
-  const summary = {
-    revenue: 0,
-    ticketsSold: 0,
-    checkins: 0,
-    tokensIssued: 0,
-  };
-
   // Hosted/Participated
   const eventsHosted = myEvents || [];
   const eventsParticipated = []; // placeholder
 
-  // ✅ State
+  // State
   const [tab, setTab] = useState("hosted");
   const [query, setQuery] = useState("");
   const [passesQuery, setPassesQuery] = useState("");
@@ -205,7 +191,7 @@ const Dashboard = () => {
     const price = Number(ev.isPaid ? ev.price || 0 : 0);
     const category = ev.category || "Event";
     const tickets = ev.capacity || 0;
-    const scans = 0; // replace when you have check-in metric
+    const scans = 0; // replace with a real metric when available
     const status = (ev.status || "draft").toLowerCase();
     const statusLabel =
       status === "published"
@@ -274,6 +260,18 @@ const Dashboard = () => {
       ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
     });
 
+  // Named-grid default (mobile: single column)
+  const mobileAreas = `
+    "header"
+    "profile"
+    "statRevenue"
+    "statPasses"
+    "statQR"
+    "events"
+    "passes"
+    "cta"
+  `;
+
   return (
     <div className="relative min-h-[100svh] w-full bg-[#05070d] text-white overflow-hidden font-space">
       {/* Background layers */}
@@ -293,167 +291,78 @@ const Dashboard = () => {
         }}
       />
 
-      {/* Content */}
+      {/* Responsive grid CSS for lg+ */}
+      <style>{`
+        .dashGrid {
+          display: grid;
+          gap: 1rem;
+          grid-template-areas: ${mobileAreas};
+        }
+        @media (min-width: 1024px) {
+          .dashGrid {
+            grid-template-columns: 1fr 1fr;
+            grid-template-areas:
+              "header header"
+              "profile statRevenue"
+              "statPasses statQR"
+              "events events"
+              "passes passes"
+              "cta cta";
+          }
+        }
+      `}</style>
+
+      {/* Content (Named Grid) */}
       <div className="relative z-10 mx-auto w-[92%] max-w-[1200px] pb-28 pt-6 md:pt-10">
-        {/* Top bar */}
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-blue-500" />
-              <span className="h-3 w-3 rounded bg-indigo-500" />
-              <span className="h-3 w-3 rounded bg-emerald-500" />
-              <span className="ml-1 h-[10px] w-[10px] rounded-sm border border-white/20" />
-            </div>
-            <Link
-              to="/dashboard"
-              className="text-xl md:text-2xl font-semibold tracking-tight"
-            >
-              <span className="font-forum text-[#19cfbc]">SuperPass</span>{" "}
-              <span className="text-white/80">Dashboard</span>
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Removed Home button as requested */}
-            <button
-              onClick={() => {
-                logoutUser();
-              }}
-              className="hidden md:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-red-600 px-4 h-10 text-sm hover:from-red-500 hover:to-red-500 transition"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
-
-            {/* Hamburger opens command palette */}
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition"
-              aria-label="Open Command Palette"
-              title="Open quick navigation (Ctrl/⌘+K)"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
-        </header>
-
-        {/* Command Palette */}
-        {isSearchOpen && (
-          <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[10vh]">
-            {/* backdrop */}
-            <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setIsSearchOpen(false)}
-            />
-            {/* panel */}
-            <div className="relative w-[92%] max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0f1a]/95 shadow-[0_20px_60px_rgba(0,0,0,.55)]">
-              {/* search input */}
-              <div className="flex items-center gap-3 px-4 sm:px-5 h-14 border-b border-white/10">
-                <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 grid place-items-center">
-                  <Search className="h-4 w-4 text-white/70" />
+        <main className="dashGrid">
+          {/* Header */}
+          <header style={{ gridArea: "header" }}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded bg-blue-500" />
+                  <span className="h-3 w-3 rounded bg-indigo-500" />
+                  <span className="h-3 w-3 rounded bg-emerald-500" />
+                  <span className="ml-1 h-[10px] w-[10px] rounded-sm border border-white/20" />
                 </div>
-                <input
-                  autoFocus
-                  value={cmdQuery}
-                  onChange={(e) => {
-                    setCmdQuery(e.target.value);
-                    setSelectedIndex(0);
-                  }}
-                  className="w-full bg-transparent outline-none text-sm sm:text-base placeholder:text-white/50"
-                  type="text"
-                  placeholder="Search pages, actions…"
-                />
-                <button
-                  className="text-[#99A1AF] flex items-center gap-2 text-xs"
-                  onClick={() => setIsSearchOpen(false)}
+                <Link
+                  to="/dashboard"
+                  className="text-xl md:text-2xl font-semibold tracking-tight"
                 >
-                  <span className="bg-[#141720] rounded px-2 py-1">esc</span>
-                  <X size={18} />
+                  <span className="font-forum text-[#19cfbc]">SuperPass</span>{" "}
+                  <span className="text-white/80">Dashboard</span>
+                </Link>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    logoutUser();
+                  }}
+                  className="hidden md:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-red-600 px-4 h-10 text-sm hover:from-red-500 hover:to-red-500 transition"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+
+                {/* Hamburger opens command palette */}
+                <button
+                  onClick={() => setIsSearchOpen(true)}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition"
+                  aria-label="Open Command Palette"
+                  title="Open quick navigation (Ctrl/⌘+K)"
+                >
+                  <Menu className="h-5 w-5" />
                 </button>
               </div>
-
-              {/* results */}
-              <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/5">
-                {paletteLinks.length === 0 ? (
-                  <div className="p-5 text-sm text-white/60">No matches.</div>
-                ) : (
-                  <div className="p-1">
-                    {paletteLinks.map((link, idx) => {
-                      const active = idx === selectedIndex;
-                      return (
-                        <button
-                          key={`${link.route}-${idx}`}
-                          onClick={() => {
-                            navigate(link.route);
-                            setIsSearchOpen(false);
-                            setCmdQuery("");
-                          }}
-                          className={`w-full text-left px-4 py-3 rounded-xl transition select-none flex items-center justify-between ${
-                            active
-                              ? "bg-white/10 border border-white/10"
-                              : "hover:bg-white/5"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-lg bg-[#252528] grid place-items-center">
-                              {link.icon}
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium">
-                                {link.title}
-                              </div>
-                              <div className="text-xs text-white/60">
-                                {link.desc}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-[11px] bg-[#141720] px-2 py-1 rounded-md text-white/60">
-                            {link.group}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* footer shortcuts */}
-              <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/10 text-[#99A1AF]">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1">
-                    <span className="bg-[#141720] p-1.5 rounded">
-                      <ArrowUp size={14} />
-                    </span>
-                    <span className="bg-[#141720] p-1.5 rounded">
-                      <ArrowDown size={14} />
-                    </span>
-                    <span className="ml-1 text-xs">navigate</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="bg-[#141720] p-1.5 rounded">
-                      <CornerDownLeft size={14} />
-                    </span>
-                    <span className="ml-1 text-xs">select</span>
-                  </div>
-                  <div className="hidden sm:flex items-center gap-1">
-                    <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
-                      ⌘/Ctrl
-                    </span>
-                    <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
-                      K
-                    </span>
-                    <span className="ml-1 text-xs">toggle</span>
-                  </div>
-                </div>
-                <span className="text-xs">@SuperPass</span>
-              </div>
             </div>
-          </div>
-        )}
+          </header>
 
-        {/* profile card + key stats */}
-        <section className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+          {/* Profile card */}
+          <section
+            style={{ gridArea: "profile" }}
+            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4"
+          >
             <div className="flex items-start gap-3">
               <div className="h-12 w-12 rounded-xl bg-white/10 border border-white/10 grid place-items-center">
                 <User2 className="h-6 w-6 text-white/85" />
@@ -495,245 +404,360 @@ const Dashboard = () => {
                 Scan
               </Link>
             </div>
-          </div>
+          </section>
 
+          {/* Stat: Revenue */}
           <StatCard
             icon={IndianRupee}
             label="Total Revenue"
-            value={fmtMoney(summary.revenue)}
+            value={fmtMoney(user?.totalRevenue || 0)}
           />
-          <StatCard
-            icon={Ticket}
-            label="Tickets Sold"
-            value={Number(summary.ticketsSold).toLocaleString()}
-          />
-        </section>
 
-        <section className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <StatCard
-            icon={BarChart3}
-            label="Check-ins"
-            value={Number(summary.checkins).toLocaleString()}
-          />
-          <StatCard
-            icon={QrCode}
-            label="QR Validations"
-            value={`${Math.round(
-              (Number(summary.checkins) /
-                Math.max(Number(summary.ticketsSold), 1)) *
-                100
-            )}%`}
-          />
-          <StatCard
-            icon={Users}
-            label="Tokens Issued"
-            value={Number(summary.tokensIssued).toLocaleString()}
-          />
-        </section>
+          {/* Stat: Passes */}
+          <section style={{ gridArea: "statPasses" }}>
+            <StatCard
+              icon={Users}
+              label="Passes Issued"
+              value={Number(user?.ticketsSold || 0).toLocaleString()}
+            />
+          </section>
 
-        {/* My Events */}
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <h3 className="text-base md:text-lg font-semibold text-white/90">
-              My Events
-            </h3>
-            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-              <div className="flex-1 min-w-[240px] rounded-xl border border-white/10 bg-[#0c1222]/60 h-11 px-3 flex items-center gap-2">
-                <Search className="h-4 w-4 text-white/60" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  type="text"
-                  placeholder={`Search ${
-                    tab === "hosted" ? "hosted" : "participated"
-                  } events…`}
-                  className="w-full bg-transparent outline-none text-sm placeholder:text-white/50"
-                />
-              </div>
-              <div className="inline-flex rounded-xl border border-white/10 overflow-hidden">
-                <button
-                  className={`px-3 h-11 text-sm ${
-                    tab === "hosted"
-                      ? "bg-white/10"
-                      : "bg-white/5 hover:bg-white/10"
-                  } transition`}
-                  onClick={() => setTab("hosted")}
-                >
-                  Hosted
-                </button>
-                <button
-                  className={`px-3 h-11 text-sm ${
-                    tab === "participated"
-                      ? "bg-white/10"
-                      : "bg-white/5 hover:bg-white/10"
-                  } transition`}
-                  onClick={() => setTab("participated")}
-                >
-                  Participated
-                </button>
-              </div>
-            </div>
-          </div>
+          {/* Stat: QR Validations */}
+          <section style={{ gridArea: "statQR" }}>
+            <StatCard
+              icon={QrCode}
+              label="QR Validations"
+              value={Number(user?.qrValidated || 0).toLocaleString()}
+            />
+          </section>
 
-          <div className="mt-4 divide-y divide-white/5">
-            {currentList.map((ev) =>
-              tab === "hosted" ? (
-                <HostedRow
-                  key={ev.id}
-                  ev={ev}
-                  onOpen={() => navigate(`/events/${ev.id}`)}
-                />
-              ) : (
-                <ParticipatedRow
-                  key={ev.id}
-                  ev={ev}
-                  onOpen={() => navigate(`/events/${ev.id}`)}
-                />
-              )
-            )}
-            {currentList.length === 0 && (
-              <div className="py-10 text-sm text-white/60 text-center">
-                {tab === "hosted"
-                  ? "No hosted events yet. Create your first event!"
-                  : "No participated events yet."}
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 flex justify-end">
-            <Link
-              to="/events"
-              className="inline-flex items-center gap-1 text-sm text-white/85 hover:text-white transition"
-            >
-              View all events <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </section>
-
-        {/* My Passes */}
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <h3 className="text-base md:text-lg font-semibold text-white/90">
-              My Passes
-            </h3>
-            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-              <div className="flex-1 min-w-[240px] rounded-xl border border-white/10 bg-[#0c1222]/60 h-11 px-3 flex items-center gap-2">
-                <Search className="h-4 w-4 text-white/60" />
-                <input
-                  value={passesQuery}
-                  onChange={(e) => setPassesQuery(e.target.value)}
-                  type="text"
-                  placeholder="Search passes…"
-                  className="w-full bg-transparent outline-none text-sm placeholder:text-white/50"
-                />
-              </div>
-            </div>
-          </div>
-
-          {loadingPasses ? (
-            <div className="py-10 text-sm text-white/60 text-center">
-              Loading your passes…
-            </div>
-          ) : passes?.length ? (
-            <div className="mt-4 divide-y divide-white/5">
-              {passes
-                .filter((p) =>
-                  `${p.eventSnapshot?.title || ""} ${
-                    p.eventSnapshot?.city || ""
-                  }`
-                    .toLowerCase()
-                    .includes(passesQuery.trim().toLowerCase())
-                )
-                .map((p) => (
-                  <div
-                    key={p._id}
-                    className="py-3 flex flex-col sm:flex-row sm:items-center gap-3"
+          {/* My Events */}
+          <section
+            style={{ gridArea: "events" }}
+            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4"
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <h3 className="text-base md:text-lg font-semibold text-white/90">
+                My Events
+              </h3>
+              <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <div className="flex-1 min-w-[240px] rounded-xl border border-white/10 bg-[#0c1222]/60 h-11 px-3 flex items-center gap-2">
+                  <Search className="h-4 w-4 text-white/60" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    type="text"
+                    placeholder={`Search ${
+                      tab === "hosted" ? "hosted" : "participated"
+                    } events…`}
+                    className="w-full bg-transparent outline-none text-sm placeholder:text-white/50"
+                  />
+                </div>
+                <div className="inline-flex rounded-xl border border-white/10 overflow-hidden">
+                  <button
+                    className={`px-3 h-11 text-sm ${
+                      tab === "hosted"
+                        ? "bg-white/10"
+                        : "bg-white/5 hover:bg-white/10"
+                    } transition`}
+                    onClick={() => setTab("hosted")}
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">
-                          {p.eventSnapshot?.title || "Event"}
-                        </p>
-                        {p.eventSnapshot?.category && (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full border border-white/10 bg-white/5">
-                            {p.eventSnapshot.category}
+                    Hosted
+                  </button>
+                  <button
+                    className={`px-3 h-11 text-sm ${
+                      tab === "participated"
+                        ? "bg-white/10"
+                        : "bg-white/5 hover:bg-white/10"
+                    } transition`}
+                    onClick={() => setTab("participated")}
+                  >
+                    Participated
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 divide-y divide-white/5">
+              {currentList.map((ev) =>
+                tab === "hosted" ? (
+                  <HostedRow
+                    key={ev.id}
+                    ev={ev}
+                    onOpen={() => navigate(`/events/${ev.id}`)}
+                  />
+                ) : (
+                  <ParticipatedRow
+                    key={ev.id}
+                    ev={ev}
+                    onOpen={() => navigate(`/events/${ev.id}`)}
+                  />
+                )
+              )}
+              {currentList.length === 0 && (
+                <div className="py-10 text-sm text-white/60 text-center">
+                  {tab === "hosted"
+                    ? "No hosted events yet. Create your first event!"
+                    : "No participated events yet."}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Link
+                to="/events"
+                className="inline-flex items-center gap-1 text-sm text-white/85 hover:text-white transition"
+              >
+                View all events <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </section>
+
+          {/* My Passes */}
+          <section
+            style={{ gridArea: "passes" }}
+            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4"
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <h3 className="text-base md:text-lg font-semibold text-white/90">
+                My Passes
+              </h3>
+              <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <div className="flex-1 min-w-[240px] rounded-xl border border-white/10 bg-[#0c1222]/60 h-11 px-3 flex items-center gap-2">
+                  <Search className="h-4 w-4 text-white/60" />
+                  <input
+                    value={passesQuery}
+                    onChange={(e) => setPassesQuery(e.target.value)}
+                    type="text"
+                    placeholder="Search passes…"
+                    className="w-full bg-transparent outline-none text-sm placeholder:text-white/50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {loadingPasses ? (
+              <div className="py-10 text-sm text-white/60 text-center">
+                Loading your passes…
+              </div>
+            ) : passes?.length ? (
+              <div className="mt-4 divide-y divide-white/5">
+                {passes
+                  .filter((p) =>
+                    `${p.eventSnapshot?.title || ""} ${
+                      p.eventSnapshot?.city || ""
+                    }`
+                      .toLowerCase()
+                      .includes(passesQuery.trim().toLowerCase())
+                  )
+                  .map((p) => (
+                    <div
+                      key={p._id}
+                      className="py-3 flex flex-col sm:flex-row sm:items-center gap-3"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">
+                            {p.eventSnapshot?.title || "Event"}
+                          </p>
+                          {p.eventSnapshot?.category && (
+                            <span className="text-[11px] px-2 py-0.5 rounded-full border border-white/10 bg-white/5">
+                              {p.eventSnapshot.category}
+                            </span>
+                          )}
+                          <span className="text-[11px] px-2 py-0.5 rounded-full border border-sky-400/30 bg-sky-400/10 text-sky-200">
+                            {p.status || "Active"}
                           </span>
-                        )}
-                        <span className="text-[11px] px-2 py-0.5 rounded-full border border-sky-400/30 bg-sky-400/10 text-sky-200">
-                          {p.status || "Active"}
-                        </span>
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/70">
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {p.eventSnapshot?.start
+                              ? new Date(p.eventSnapshot.start).toLocaleString()
+                              : "—"}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {p.eventSnapshot?.city || "—"}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <IndianRupee className="h-3.5 w-3.5" />
+                            {Number(p.eventSnapshot?.price || 0) > 0
+                              ? p.eventSnapshot.price
+                              : "Free"}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Ticket className="h-3.5 w-3.5" />
+                            {p.quantity || 1}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/70">
-                        <span className="inline-flex items-center gap-1">
-                          <CalendarDays className="h-3.5 w-3.5" />
-                          {p.eventSnapshot?.start
-                            ? new Date(p.eventSnapshot.start).toLocaleString()
-                            : "—"}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {p.eventSnapshot?.city || "—"}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <IndianRupee className="h-3.5 w-3.5" />
-                          {Number(p.eventSnapshot?.price || 0) > 0
-                            ? p.eventSnapshot.price
-                            : "Free"}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Ticket className="h-3.5 w-3.5" />
-                          {p.quantity || 1}
-                        </span>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/my-passes/${p._id}`}
+                          className="h-9 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-sm inline-flex items-center gap-1"
+                        >
+                          View Pass{" "}
+                          <ExternalLink className="h-4 w-4 opacity-70" />
+                        </Link>
                       </div>
                     </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="py-10 text-sm text-white/60 text-center">
+                You haven’t purchased any passes yet.
+              </div>
+            )}
+          </section>
 
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={`/my-passes/${p._id}`}
-                        className="h-9 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-sm inline-flex items-center gap-1"
-                      >
-                        View Pass{" "}
-                        <ExternalLink className="h-4 w-4 opacity-70" />
-                      </Link>
-                    </div>
-                  </div>
-                ))}
+          {/* Bottom CTA */}
+          <section
+            style={{ gridArea: "cta" }}
+            className="rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+          >
+            <div>
+              <h3 className="text-lg md:text-xl font-semibold">
+                Host your next event with SuperPass
+              </h3>
+              <p className="text-sm text-white/70 mt-1">
+                Create listings, sell tickets, and manage check-ins with ease.
+              </p>
             </div>
-          ) : (
-            <div className="py-10 text-sm text-white/60 text-center">
-              You haven’t purchased any passes yet.
+            <div className="flex gap-2">
+              <Link
+                to="/events/create"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+              >
+                <Plus className="h-4 w-4" />
+                Create Event
+              </Link>
+              <Link
+                to="/events"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
+              >
+                View Events
+              </Link>
             </div>
-          )}
-        </section>
-
-        {/* Bottom CTA */}
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h3 className="text-lg md:text-xl font-semibold">
-              Host your next event with SuperPass
-            </h3>
-            <p className="text-sm text-white/70 mt-1">
-              Create listings, sell tickets, and manage check-ins with ease.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              to="/events/create"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-4 h-11 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
-            >
-              <Plus className="h-4 w-4" />
-              Create Event
-            </Link>
-            <Link
-              to="/events"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 h-11 text-sm hover:bg-white/10 transition"
-            >
-              View Events
-            </Link>
-          </div>
-        </section>
+          </section>
+        </main>
       </div>
+
+      {/* Command Palette (overlay) */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[10vh]">
+          {/* backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsSearchOpen(false)}
+          />
+          {/* panel */}
+          <div className="relative w-[92%] max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0f1a]/95 shadow-[0_20px_60px_rgba(0,0,0,.55)]">
+            {/* search input */}
+            <div className="flex items-center gap-3 px-4 sm:px-5 h-14 border-b border-white/10">
+              <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 grid place-items-center">
+                <Search className="h-4 w-4 text-white/70" />
+              </div>
+              <input
+                autoFocus
+                value={cmdQuery}
+                onChange={(e) => {
+                  setCmdQuery(e.target.value);
+                  setSelectedIndex(0);
+                }}
+                className="w-full bg-transparent outline-none text-sm sm:text-base placeholder:text-white/50"
+                type="text"
+                placeholder="Search pages, actions…"
+              />
+              <button
+                className="text-[#99A1AF] flex items-center gap-2 text-xs"
+                onClick={() => setIsSearchOpen(false)}
+              >
+                <span className="bg-[#141720] rounded px-2 py-1">esc</span>
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* results */}
+            <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/5">
+              {paletteLinks.length === 0 ? (
+                <div className="p-5 text-sm text-white/60">No matches.</div>
+              ) : (
+                <div className="p-1">
+                  {paletteLinks.map((link, idx) => {
+                    const active = idx === selectedIndex;
+                    return (
+                      <button
+                        key={`${link.route}-${idx}`}
+                        onClick={() => {
+                          navigate(link.route);
+                          setIsSearchOpen(false);
+                          setCmdQuery("");
+                        }}
+                        className={`w-full text-left px-4 py-3 rounded-xl transition select-none flex items-center justify-between ${
+                          active
+                            ? "bg-white/10 border border-white/10"
+                            : "hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-lg bg-[#252528] grid place-items-center">
+                            {link.icon}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium">
+                              {link.title}
+                            </div>
+                            <div className="text-xs text-white/60">
+                              {link.desc}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-[11px] bg-[#141720] px-2 py-1 rounded-md text-white/60">
+                          {link.group}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* footer shortcuts */}
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/10 text-[#99A1AF]">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1">
+                  <span className="bg-[#141720] p-1.5 rounded">
+                    <ArrowUp size={14} />
+                  </span>
+                  <span className="bg-[#141720] p-1.5 rounded">
+                    <ArrowDown size={14} />
+                  </span>
+                  <span className="ml-1 text-xs">navigate</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="bg-[#141720] p-1.5 rounded">
+                    <CornerDownLeft size={14} />
+                  </span>
+                  <span className="ml-1 text-xs">select</span>
+                </div>
+                <div className="hidden sm:flex items-center gap-1">
+                  <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                    ⌘/Ctrl
+                  </span>
+                  <span className="bg-[#141720] px-1.5 py-1 rounded text-[11px]">
+                    K
+                  </span>
+                  <span className="ml-1 text-xs">toggle</span>
+                </div>
+              </div>
+              <span className="text-xs">@SuperPass</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
