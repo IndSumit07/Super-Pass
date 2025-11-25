@@ -25,11 +25,14 @@ import {
   Home as HomeIcon,
   CalendarDays,
 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { getNavigationLinks } from "../config/navigationLinks";
 
 export default function ManageEvent() {
   const { id } = useParams(); // route: /events/:id/manage
   const navigate = useNavigate();
   const { fetchParticipants } = usePasses();
+  const { isAuthenticated, user } = useAuth();
 
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,71 +105,18 @@ export default function ManageEvent() {
       : "—";
 
   // ----- Command palette -----
-  const baseLinks = useMemo(
-    () => [
-      {
-        title: "Home",
-        desc: "Back to the homepage",
-        icon: <HomeIcon className="h-5 w-5" />,
-        route: "/",
-        group: "Navigation",
-      },
-      {
-        title: "Dashboard",
-        desc: "Creator control center",
-        icon: <LayoutGrid className="h-5 w-5" />,
-        route: "/dashboard",
-        group: "Navigation",
-      },
-      {
-        title: "Events",
-        desc: "Browse all events",
-        icon: <CalendarDays className="h-5 w-5" />,
-        route: "/events",
-        group: "Navigation",
-      },
-      {
-        title: "Create Event",
-        desc: "Publish a new event",
-        icon: <Plus className="h-5 w-5" />,
-        route: "/events/create",
-        group: "Actions",
-      },
-      {
-        title: "Scanner",
-        desc: "Open the QR scanner",
-        icon: <QrCode className="h-5 w-5" />,
-        route: `/events/${id}/scan`,
-        group: "Actions",
-      },
-      {
-        title: "Settings",
-        desc: "Profile & app preferences",
-        icon: <Settings className="h-5 w-5" />,
-        route: "/settings",
-        group: "Navigation",
-      },
-      {
-        title: "Help",
-        desc: "FAQs and support",
-        icon: <HelpCircle className="h-5 w-5" />,
-        route: "/help",
-        group: "Support",
-      },
-    ],
-    [id]
-  );
-
+  // ---------- Command Palette Links (centralized configuration) ----------
   const paletteLinks = useMemo(() => {
+    const list = getNavigationLinks(`/events/${id}/manage`, isAuthenticated, user);
     const q = cmdQuery.trim().toLowerCase();
-    if (!q) return baseLinks;
-    return baseLinks.filter(
+    if (!q) return list;
+    return list.filter(
       (l) =>
         l.title.toLowerCase().includes(q) ||
         l.desc.toLowerCase().includes(q) ||
         l.group.toLowerCase().includes(q)
     );
-  }, [cmdQuery, baseLinks]);
+  }, [isAuthenticated, user, cmdQuery, id]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {

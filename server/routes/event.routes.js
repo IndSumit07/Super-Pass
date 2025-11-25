@@ -9,6 +9,8 @@ import {
 } from "../controllers/event.controller.js";
 import { uploadEventMedia } from "../middlewares/upload.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { checkEventCreationLimit } from "../controllers/subscription.controller.js";
+
 // If you have auth middleware, plug it here:
 
 const eventRouter = Router();
@@ -18,7 +20,13 @@ eventRouter.get("/", getEvents);
 eventRouter.get("/:idOrSlug", getEventById);
 
 // Protected: create/update/delete
-eventRouter.post("/create", authMiddleware, uploadEventMedia, createEvent);
+eventRouter.post(
+  "/create",
+  authMiddleware,
+  checkEventCreationLimit,
+  uploadEventMedia,
+  createEvent
+);
 eventRouter.put("/:idOrSlug", authMiddleware, uploadEventMedia, updateEvent);
 eventRouter.delete("/:idOrSlug", authMiddleware, deleteEvent);
 

@@ -311,7 +311,7 @@ const CreateEvent = () => {
     } catch (err) {
       toast?.error?.({
         title: "Create failed",
-        description: err?.message || "Please try again.",
+        description: err.response?.data?.message || err.message || "Please try again.",
       });
     } finally {
       setSubmitting(false);

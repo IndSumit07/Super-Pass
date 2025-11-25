@@ -30,6 +30,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useEvents } from "../contexts/EventContext";
 import { usePasses } from "../contexts/PassContext";
+import { getNavigationLinks } from "../config/navigationLinks";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -75,71 +76,18 @@ const Dashboard = () => {
   const [cmdQuery, setCmdQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const baseLinks = useMemo(
-    () => [
-      {
-        title: "Home",
-        desc: "Back to the homepage",
-        icon: <HomeIcon className="h-5 w-5" />,
-        route: "/",
-        group: "Navigation",
-      },
-      {
-        title: "Dashboard",
-        desc: "Creator control center",
-        icon: <LayoutGrid className="h-5 w-5" />,
-        route: "/dashboard",
-        group: "Navigation",
-      },
-      {
-        title: "Events",
-        desc: "Browse all events",
-        icon: <CalendarDays className="h-5 w-5" />,
-        route: "/events",
-        group: "Navigation",
-      },
-      {
-        title: "Create Event",
-        desc: "Publish a new event",
-        icon: <Plus className="h-5 w-5" />,
-        route: "/events/create",
-        group: "Actions",
-      },
-      {
-        title: "Scan",
-        desc: "Open the QR scanner",
-        icon: <QrCode className="h-5 w-5" />,
-        route: "/scan",
-        group: "Actions",
-      },
-      {
-        title: "Settings",
-        desc: "Profile & app preferences",
-        icon: <Settings className="h-5 w-5" />,
-        route: "/settings",
-        group: "Navigation",
-      },
-      {
-        title: "Help",
-        desc: "FAQs and support",
-        icon: <HelpCircle className="h-5 w-5" />,
-        route: "/help",
-        group: "Support",
-      },
-    ],
-    []
-  );
-
+  // ---------- Command Palette Links (centralized configuration) ----------
   const paletteLinks = useMemo(() => {
+    const list = getNavigationLinks("/dashboard", true, user);
     const q = cmdQuery.trim().toLowerCase();
-    if (!q) return baseLinks;
-    return baseLinks.filter(
+    if (!q) return list;
+    return list.filter(
       (l) =>
         l.title.toLowerCase().includes(q) ||
         l.desc.toLowerCase().includes(q) ||
         l.group.toLowerCase().includes(q)
     );
-  }, [cmdQuery, baseLinks]);
+  }, [user, cmdQuery]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -388,13 +336,20 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex gap-2 flex-wrap">
               <Link
                 to="/events/create"
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 px-3 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
               >
                 <Plus className="h-4 w-4" />
                 New Event
+              </Link>
+              <Link
+                to="/withdrawals"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 h-10 text-sm hover:bg-white/10 transition"
+              >
+                <IndianRupee className="h-4 w-4" />
+                Withdrawals
               </Link>
               <Link
                 to="/scan"

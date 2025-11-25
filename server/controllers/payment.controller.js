@@ -249,6 +249,7 @@ export const verifyPayment = async (req, res) => {
             $inc: {
               ticketsSold: qty,
               totalRevenue: price * qty, // stored in rupees
+              availableBalance: price * qty, // Add to available balance for withdrawal
             },
           }
         );

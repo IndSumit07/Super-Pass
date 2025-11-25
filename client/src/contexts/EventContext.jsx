@@ -17,7 +17,7 @@ export const EventProvider = ({ children }) => {
     user,
     isAuthenticated,
     loading: authLoading,
-    forceRefresh, // from AuthContext
+    forceRefresh,
   } = useAuth();
   const toast = useToast();
   const API_URL = import.meta.env.VITE_API_URL;
@@ -26,7 +26,7 @@ export const EventProvider = ({ children }) => {
   const [singleEvent, setSingleEvent] = useState(null);
 
   // loading states (mirror AuthContext style)
-  const [loading, setLoading] = useState(false); // list/details
+  const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false); // create/update/delete
   const isBusy = loading || actionLoading;
 
@@ -73,7 +73,8 @@ export const EventProvider = ({ children }) => {
     return instance;
   }, [API_URL, forceRefresh]);
 
-  // ========== API Calls ==========
+  // ==========
+  //  API Calls ==========
 
   // Fetch list
   const fetchEvents = async (params = {}) => {

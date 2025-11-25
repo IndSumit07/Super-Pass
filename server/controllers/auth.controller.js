@@ -85,10 +85,10 @@ export const register = async (req, res) => {
       .status(201)
       .json({ success: true, message: "Verification email sent." });
   } catch (error) {
+    console.error("[Register Error]:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Server error",
-      error: error.message,
+      message: "Registration failed. Please try again.",
     });
   }
 };
@@ -136,10 +136,10 @@ export const verifyRegistrationOtp = async (req, res) => {
       userId: newUser._id,
     });
   } catch (error) {
+    console.error("[Verify OTP Error]:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Server error",
-      error: error.message,
+      message: "Verification failed. Please try again.",
     });
   }
 };
@@ -170,10 +170,12 @@ export const login = async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokens(user._id);
 
+    // Enhanced cookie security
+    const isProduction = process.env.NODE_ENV === "production";
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
+      secure: isProduction, // Only use secure in production (requires HTTPS)
+      sameSite: isProduction ? "strict" : "lax", // Strict in production, lax in development
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -187,10 +189,10 @@ export const login = async (req, res) => {
       accessToken,
     });
   } catch (error) {
+    console.error("[Login Error]:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Server error",
-      error: error.message,
+      message: "Login failed. Please try again.",
     });
   }
 };
@@ -212,9 +214,10 @@ export const logout = async (req, res) => {
 
     return res.json({ success: true, message: "Logged out successfully" });
   } catch (error) {
+    console.error("[Logout Error]:", error.message);
     return res
       .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+      .json({ success: false, message: "Logout failed. Please try again." });
   }
 };
 
@@ -319,9 +322,27 @@ export const resetPassword = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
 
+    // CRITICAL FIX: Ensure OTP was verified before allowing password reset
+    if (!user.otp?.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "Please verify OTP before resetting password",
+      });
+    }
+
+    // Check if OTP is still valid (not expired)
+    if (user.otp.expiresAt < Date.now()) {
+      user.otp = {};
+      await user.save();
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new one.",
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
-    user.otp = {};
+    user.otp = {}; // Clear OTP after successful reset
     await user.save();
 
     return res.json({

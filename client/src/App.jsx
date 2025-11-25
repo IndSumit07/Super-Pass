@@ -20,6 +20,9 @@ import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import ManageEvent from "./pages/ManageEvent";
+import Pricing from "./pages/Pricing";
+import Withdrawals from "./pages/Withdrawals";
+import AdminWithdrawals from "./pages/AdminWithdrawals";
 
 const App = () => {
   return (
@@ -140,6 +143,23 @@ const App = () => {
         />
         <Route path="*" element={<NotFound />} />
         <Route path="/about" element={<About />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route
+          path="/withdrawals"
+          element={
+            <ProtectedRoute>
+              <Withdrawals />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/withdrawals"
+          element={
+            <ProtectedRoute>
+              <AdminWithdrawals />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/events/:id/manage"
           element={

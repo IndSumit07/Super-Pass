@@ -56,6 +56,19 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    availableBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    totalWithdrawn: {
+      type: Number,
+      default: 0,
+    },
+    subscription: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subscription",
+    },
   },
   { timestamps: true }
 );

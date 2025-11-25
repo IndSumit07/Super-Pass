@@ -24,6 +24,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { getNavigationLinks } from "../config/navigationLinks";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -43,89 +44,9 @@ const Home = () => {
   const goTo = (path) => () => navigate(path);
 
   // command palette items
-  const baseLinks = useMemo(
-    () => [
-      {
-        title: "Home",
-        desc: "Back to the homepage",
-        icon: <HomeIcon className="h-5 w-5" />,
-        route: "/",
-        group: "Navigation",
-      },
-      {
-        title: "Dashboard",
-        desc: "Creator control center",
-        icon: <LayoutGrid className="h-5 w-5" />,
-        route: "/dashboard",
-        group: "Navigation",
-        auth: true,
-      },
-      {
-        title: "My Passes",
-        desc: "View tickets you purchased",
-        icon: <Ticket className="h-5 w-5" />,
-        route: "/my-passes",
-        group: "Navigation",
-        auth: true,
-      },
-      {
-        title: "Events",
-        desc: "Browse all events",
-        icon: <CalendarDays className="h-5 w-5" />,
-        route: "/events",
-        group: "Navigation",
-      },
-      {
-        title: "Create Event",
-        desc: "Publish a new event",
-        icon: <Plus className="h-5 w-5" />,
-        route: "/events/create",
-        group: "Actions",
-        auth: true,
-      },
-      {
-        title: "Scan Tickets",
-        desc: "Open QR scanner",
-        icon: <QrCode className="h-5 w-5" />,
-        route: "/scan",
-        group: "Actions",
-        auth: true,
-      },
-      {
-        title: "Settings",
-        desc: "Profile & app preferences",
-        icon: <Settings className="h-5 w-5" />,
-        route: "/settings",
-        group: "Navigation",
-        auth: true,
-      },
-      {
-        title: "Help",
-        desc: "FAQs and support",
-        icon: <HelpCircle className="h-5 w-5" />,
-        route: "/help",
-        group: "Support",
-      },
-      {
-        title: "Projects",
-        desc: "View my projects",
-        icon: <Folder className="h-5 w-5" />,
-        route: "/projects",
-        group: "Portfolio",
-      },
-      {
-        title: "Tech Stack",
-        desc: "View my tech stacks",
-        icon: <Layers className="h-5 w-5" />,
-        route: "/tech-stack",
-        group: "Portfolio",
-      },
-    ],
-    []
-  );
-
+  // ---------- Command Palette Links (centralized configuration) ----------
   const paletteLinks = useMemo(() => {
-    const list = baseLinks.filter((l) => (l.auth ? isAuthenticated : true));
+    const list = getNavigationLinks("/", isAuthenticated, user);
     const q = query.trim().toLowerCase();
     if (!q) return list;
     return list.filter(
@@ -134,7 +55,7 @@ const Home = () => {
         l.desc.toLowerCase().includes(q) ||
         l.group.toLowerCase().includes(q)
     );
-  }, [baseLinks, isAuthenticated, query]);
+  }, [isAuthenticated, user, query]);
 
   // keyboard shortcuts
   useEffect(() => {

@@ -26,6 +26,7 @@ import {
 import { useEvents } from "../contexts/EventContext";
 import { useAuth } from "../contexts/AuthContext";
 import Loader from "../components/Loader";
+import { getNavigationLinks } from "../config/navigationLinks";
 
 const CATEGORIES = [
   "All",
@@ -41,7 +42,7 @@ const CATEGORIES = [
 const Events = () => {
   const navigate = useNavigate();
   const { events, loading, fetchEvents } = useEvents();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   // list filters
   const [query, setQuery] = useState("");
@@ -58,76 +59,9 @@ const Events = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------- Command Palette Links (same model as Home) ----------
-  const baseLinks = useMemo(
-    () => [
-      {
-        title: "Home",
-        desc: "Back to the homepage",
-        icon: <HomeIcon className="h-5 w-5" />,
-        route: "/",
-        group: "Navigation",
-      },
-      {
-        title: "Dashboard",
-        desc: "Creator control center",
-        icon: <LayoutGrid className="h-5 w-5" />,
-        route: "/dashboard",
-        group: "Navigation",
-        auth: true,
-      },
-      {
-        title: "My Passes",
-        desc: "View tickets you purchased",
-        icon: <Ticket className="h-5 w-5" />,
-        route: "/my-passes",
-        group: "Navigation",
-        auth: true,
-      },
-      {
-        title: "Events",
-        desc: "Browse all events",
-        icon: <CalendarDays className="h-5 w-5" />,
-        route: "/events",
-        group: "Navigation",
-      },
-      {
-        title: "Create Event",
-        desc: "Publish a new event",
-        icon: <Plus className="h-5 w-5" />,
-        route: "/events/create",
-        group: "Actions",
-        auth: true,
-      },
-      {
-        title: "Scan Tickets",
-        desc: "Open QR scanner",
-        icon: <QrCode className="h-5 w-5" />,
-        route: "/scan",
-        group: "Actions",
-        auth: true,
-      },
-      {
-        title: "Settings",
-        desc: "Profile & app preferences",
-        icon: <Settings className="h-5 w-5" />,
-        route: "/settings",
-        group: "Navigation",
-        auth: true,
-      },
-      {
-        title: "Help",
-        desc: "FAQs and support",
-        icon: <HelpCircle className="h-5 w-5" />,
-        route: "/help",
-        group: "Support",
-      },
-    ],
-    []
-  );
-
+  // ---------- Command Palette Links (centralized configuration) ----------
   const paletteLinks = useMemo(() => {
-    const list = baseLinks.filter((l) => (l.auth ? isAuthenticated : true));
+    const list = getNavigationLinks("/events", isAuthenticated, user);
     const q = cmdQuery.trim().toLowerCase();
     if (!q) return list;
     return list.filter(
@@ -136,7 +70,7 @@ const Events = () => {
         l.desc.toLowerCase().includes(q) ||
         l.group.toLowerCase().includes(q)
     );
-  }, [baseLinks, isAuthenticated, cmdQuery]);
+  }, [isAuthenticated, user, cmdQuery]);
 
   // keyboard shortcuts for command palette
   useEffect(() => {
