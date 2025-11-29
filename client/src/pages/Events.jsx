@@ -485,16 +485,42 @@ const Events = () => {
                     )}
 
                     {/* CTA */}
-                    <div className="mt-4">
-                      <button
-                        onClick={goDetails(ev._id || ev.id)}
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
-                        aria-label={`View details for ${ev.title}`}
-                        onMouseDown={(e) => e.stopPropagation()}
-                      >
-                        View details
-                        <ArrowRight className="h-4 w-4 opacity-90" />
-                      </button>
+                    <div className="mt-4 flex gap-2">
+                      {/* Show Edit/Manage button if user is the creator */}
+                      {isAuthenticated && user?._id === ev.createdBy ? (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/events/${ev._id || ev.id}/manage`);
+                            }}
+                            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 h-10 text-sm hover:bg-white/10 transition"
+                            aria-label={`Manage ${ev.title}`}
+                          >
+                            <Settings className="h-4 w-4" />
+                            Manage
+                          </button>
+                          <button
+                            onClick={goDetails(ev._id || ev.id)}
+                            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+                            aria-label={`View details for ${ev.title}`}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            View details
+                            <ArrowRight className="h-4 w-4 opacity-90" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={goDetails(ev._id || ev.id)}
+                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 h-10 text-sm hover:from-blue-500 hover:to-indigo-500 transition"
+                          aria-label={`View details for ${ev.title}`}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        >
+                          View details
+                          <ArrowRight className="h-4 w-4 opacity-90" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </article>

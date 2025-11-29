@@ -11,6 +11,7 @@ import checkinRouter from "./routes/checkin.routes.js";
 import helpRouter from "./routes/help.routes.js";
 import withdrawalRouter from "./routes/withdrawal.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
+import teamRouter from "./routes/team.routes.js";
 import {
   helmetConfig,
   sanitizeData,
@@ -72,6 +73,7 @@ app.use("/api/checkin", checkinRouter);
 app.use("/api/help", helpRouter);
 app.use("/api/withdrawals", withdrawalRouter);
 app.use("/api/subscriptions", subscriptionRouter);
+app.use("/api/teams", teamRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

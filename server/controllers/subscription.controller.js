@@ -13,9 +13,9 @@ const PLANS = {
   free: {
     name: "Free",
     price: 0,
-    eventsLimit: 1,
+    eventsLimit: 3,
     features: [
-      "1 event per month",
+      "3 events per month",
       "Basic analytics",
       "QR code generation",
       "Email support",
@@ -79,7 +79,7 @@ export const getCurrentSubscription = async (req, res) => {
       subscription = await Subscription.create({
         user: userId,
         plan: "free",
-        eventsLimit: 1,
+        eventsLimit: 3,
       });
 
       await User.findByIdAndUpdate(userId, { subscription: subscription._id });
@@ -256,7 +256,7 @@ export const cancelSubscription = async (req, res) => {
     // Downgrade to free at end of current period
     // For now, immediate downgrade
     subscription.plan = "free";
-    subscription.eventsLimit = 1;
+    subscription.eventsLimit = 3;
 
     await subscription.save();
 
@@ -285,7 +285,7 @@ export const checkEventCreationLimit = async (req, res, next) => {
       subscription = await Subscription.create({
         user: userId,
         plan: "free",
-        eventsLimit: 1,
+        eventsLimit: 3,
       });
     }
 

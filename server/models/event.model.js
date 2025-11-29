@@ -90,6 +90,7 @@ const EventSchema = new mongoose.Schema(
     // ticketing
     isPaid: { type: Boolean, default: false },
     price: { type: Number, min: 0, default: 0 },
+    perPersonFee: { type: Number, min: 0 }, // For team events, price per person
     capacity: { type: Number, min: 0 },
 
     // team

@@ -23,6 +23,7 @@ import ManageEvent from "./pages/ManageEvent";
 import Pricing from "./pages/Pricing";
 import Withdrawals from "./pages/Withdrawals";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
+import TeamInvite from "./pages/TeamInvite";
 
 const App = () => {
   return (
@@ -140,6 +141,10 @@ const App = () => {
               <Help />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/team-invite/:token"
+          element={<TeamInvite />}
         />
         <Route path="*" element={<NotFound />} />
         <Route path="/about" element={<About />} />
