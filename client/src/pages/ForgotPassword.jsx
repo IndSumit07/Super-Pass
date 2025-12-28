@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import PasswordInput from "../components/PasswordInput";
 
 const ForgotPassword = () => {
   const [step, setStep] = useState(1);
@@ -21,11 +22,13 @@ const ForgotPassword = () => {
     confirm: "",
   });
 
+  // Validation State
+  const [isPassValid, setIsPassValid] = useState(false);
+
   const onChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   // Validation
-  const isPassValid = form.password.trim().length >= 6;
   const isMatch =
     form.password && form.confirm && form.password === form.confirm;
 
@@ -176,39 +179,15 @@ const ForgotPassword = () => {
                 {/* New Password */}
                 <div>
                   <label className="text-xs text-white/70">New password</label>
-                  <div
-                    className={`mt-1 h-12 px-3 rounded-xl border flex items-center gap-2 bg-[#0c1222]/60 transition focus-within:border-white/20 ${
-                      form.password
-                        ? isPassValid
-                          ? "border-emerald-500/40"
-                          : "border-rose-500/40"
-                        : "border-white/10"
-                    }`}
-                  >
-                    <Lock className="h-4 w-4 text-white/60" />
-                    <input
-                      name="password"
-                      type="password"
-                      minLength={6}
-                      required
+                  <div className="mt-1">
+                    <PasswordInput
                       value={form.password}
+                      name="password"
                       onChange={onChange}
-                      className="w-full bg-transparent outline-none text-sm"
-                      placeholder="••••••••"
+                      showStrength={true}
+                      onValidationChange={setIsPassValid}
                     />
-                    {form.password && (
-                      <>
-                        {isPassValid ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-rose-400" />
-                        )}
-                      </>
-                    )}
                   </div>
-                  <p className="mt-1 text-[11px] text-white/50">
-                    Use at least 6 characters.
-                  </p>
                 </div>
 
                 {/* Confirm Password */}
@@ -216,35 +195,14 @@ const ForgotPassword = () => {
                   <label className="text-xs text-white/70">
                     Confirm password
                   </label>
-                  <div
-                    className={`mt-1 h-12 px-3 rounded-xl border flex items-center gap-2 bg-[#0c1222]/60 transition focus-within:border-white/20 ${
-                      form.confirm
-                        ? isMatch
-                          ? "border-emerald-500/40"
-                          : "border-rose-500/40"
-                        : "border-white/10"
-                    }`}
-                  >
-                    <Lock className="h-4 w-4 text-white/60" />
-                    <input
-                      name="confirm"
-                      type="password"
-                      minLength={6}
-                      required
+                  <div className="mt-1">
+                    <PasswordInput
                       value={form.confirm}
+                      name="confirm"
                       onChange={onChange}
-                      className="w-full bg-transparent outline-none text-sm"
-                      placeholder="••••••••"
+                      showStrength={false}
+                      placeholder="Confirm password"
                     />
-                    {form.confirm && (
-                      <>
-                        {isMatch ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-rose-400" />
-                        )}
-                      </>
-                    )}
                   </div>
                   <p className="mt-1 text-[11px] text-white/50">
                     {form.confirm &&
@@ -255,7 +213,7 @@ const ForgotPassword = () => {
                 </div>
 
                 {/* Navigation */}
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-xs pt-2">
                   <button
                     type="button"
                     onClick={() => setStep(2)}
@@ -268,7 +226,10 @@ const ForgotPassword = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 transition inline-flex items-center justify-center gap-2"
+                  className={`w-full h-12 rounded-xl transition inline-flex items-center justify-center gap-2 ${isPassValid && isMatch
+                      ? "bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white"
+                      : "bg-white/10 text-white/40 cursor-not-allowed"
+                    }`}
                 >
                   {loading ? "Saving..." : "Reset Password"}
                   <ArrowRight className="h-4 w-4" />

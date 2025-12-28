@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import {
   User,
   Mail,
-  Lock,
   ArrowRight,
   ArrowLeft,
   KeyRound,
@@ -11,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import PasswordInput from "../components/PasswordInput";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -22,18 +22,21 @@ const Register = () => {
     password: "",
     otp: "",
   });
+
+  // Validation states
+  const [isPassValid, setIsPassValid] = useState(false);
+
   const { registerUser, verifyEmail, loading } = useAuth();
   const onChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  // Live validation
+  // Live validation for other fields
   const isFirstValid = form.firstname.trim().length >= 3;
   const isLastValid = form.lastname.trim().length >= 3;
-  const isPassValid = form.password.trim().length >= 6;
 
   const submitStep1 = async (e) => {
     e.preventDefault();
-    if (!isFirstValid || !isLastValid || !isPassValid) return; // simple guard
+    if (!isFirstValid || !isLastValid || !isPassValid) return;
     const payload = {
       fullname: {
         firstname: form.firstname,
@@ -89,13 +92,12 @@ const Register = () => {
                   <div className="mt-1 grid grid-cols-2 gap-2">
                     {/* First name */}
                     <div
-                      className={`h-12 px-3 rounded-xl border bg-[#0c1222]/60 flex items-center gap-2 transition focus-within:border-white/20 ${
-                        form.firstname
+                      className={`h-12 px-3 rounded-xl border bg-[#0c1222]/60 flex items-center gap-2 transition focus-within:border-white/20 ${form.firstname
                           ? isFirstValid
                             ? "border-emerald-500/40"
                             : "border-rose-500/40"
                           : "border-white/10"
-                      }`}
+                        }`}
                     >
                       <User className="h-4 w-4 text-white/60" />
                       <input
@@ -119,13 +121,12 @@ const Register = () => {
 
                     {/* Last name */}
                     <div
-                      className={`h-12 px-3 rounded-xl border bg-[#0c1222]/60 flex items-center gap-2 transition focus-within:border-white/20 ${
-                        form.lastname
+                      className={`h-12 px-3 rounded-xl border bg-[#0c1222]/60 flex items-center gap-2 transition focus-within:border-white/20 ${form.lastname
                           ? isLastValid
                             ? "border-emerald-500/40"
                             : "border-rose-500/40"
                           : "border-white/10"
-                      }`}
+                        }`}
                     >
                       <User className="h-4 w-4 text-white/60" />
                       <input
@@ -173,45 +174,22 @@ const Register = () => {
                   </div>
                 </div>
 
-                {/* Password */}
+                {/* Password Input with Enhanced Validation */}
                 <div>
                   <label className="text-xs text-white/70">Password</label>
-                  <div
-                    className={`mt-1 h-12 px-3 rounded-xl border bg-[#0c1222]/60 flex items-center gap-2 transition focus-within:border-white/20 ${
-                      form.password
-                        ? isPassValid
-                          ? "border-emerald-500/40"
-                          : "border-rose-500/40"
-                        : "border-white/10"
-                    }`}
-                  >
-                    <Lock className="h-4 w-4 text-white/60" />
-                    <input
-                      name="password"
-                      type="password"
-                      required
+                  <div className="mt-1">
+                    <PasswordInput
                       value={form.password}
                       onChange={onChange}
-                      className="w-full bg-transparent outline-none text-sm"
-                      placeholder="••••••••"
+                      name="password"
+                      showStrength={true}
+                      onValidationChange={setIsPassValid}
                     />
-                    {form.password && (
-                      <>
-                        {isPassValid ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-rose-400" />
-                        )}
-                      </>
-                    )}
                   </div>
-                  <p className="mt-1 text-[11px] text-white/50">
-                    Use at least 6 characters.
-                  </p>
                 </div>
 
                 {/* Navigation & submit */}
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-xs pt-2">
                   <Link
                     to="/login"
                     className="text-white/70 hover:text-white inline-flex items-center gap-1"
@@ -223,7 +201,10 @@ const Register = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 transition inline-flex items-center justify-center gap-2"
+                  className={`w-full h-12 rounded-xl transition inline-flex items-center justify-center gap-2 ${isFirstValid && isLastValid && isPassValid && form.email
+                      ? "bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white"
+                      : "bg-white/10 text-white/40 cursor-not-allowed"
+                    }`}
                 >
                   {loading ? "Sending OTP..." : "Continue"}
                   <ArrowRight className="h-4 w-4" />
