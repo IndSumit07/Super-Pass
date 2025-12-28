@@ -4,7 +4,7 @@ import helmet from "helmet";
 // Rate limiting for authentication endpoints
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 requests per window
+  max: 100, // 100 requests per window
   message: {
     success: false,
     message: "Too many attempts, please try again after 15 minutes",
@@ -17,7 +17,7 @@ export const authLimiter = rateLimit({
 // Rate limiting for general API endpoints
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
+  max: 1000, // 1000 requests per window
   message: {
     success: false,
     message: "Too many requests, please try again later",
@@ -29,7 +29,7 @@ export const apiLimiter = rateLimit({
 // Rate limiting for payment endpoints (stricter)
 export const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 payment attempts per window
+  max: 100, // 100 payment attempts per window
   message: {
     success: false,
     message: "Too many payment attempts, please try again later",
@@ -89,4 +89,3 @@ export const sanitizeData = (req, res, next) => {
     next();
   }
 };
-
